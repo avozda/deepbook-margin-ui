@@ -1,0 +1,180 @@
+# AGENTS.md - AI Coding Agent Guidelines
+
+This document provides guidelines for AI agents working in this codebase.
+
+## Technology Stack
+
+- **Framework**: SolidJS + SolidStart (SSR-enabled)
+- **Build Tool**: Vinxi
+- **Styling**: Tailwind CSS v4 (CSS-first config)
+- **UI Components**: Kobalte (headless primitives)
+- **Language**: TypeScript (strict mode)
+- **Node.js**: >=22 required
+
+## Build/Dev Commands
+
+```bash
+bun dev      # Development server
+bun build    # Production build
+bun start    # Start production server
+```
+
+**Note**: No lint or test commands configured. No ESLint, Prettier, or testing framework exists yet.
+
+## Project Structure
+
+```
+src/
+├── app.tsx              # Root app with Router and Suspense
+├── app.css              # Tailwind v4 config + design tokens
+├── routes/              # File-based routing
+│   ├── index.tsx        # Home page (/)
+│   └── [...404].tsx     # 404 catch-all
+├── components/
+│   ├── Nav.tsx          # Navigation
+│   └── ui/              # Reusable UI components (button.tsx, etc.)
+└── lib/                 # Utilities (cva.ts, use-mobile.ts, etc.)
+```
+
+## Code Style Guidelines
+
+### Imports
+
+1. Use `@/` path alias for `src/` imports:
+   ```typescript
+   import { Button } from "@/components/ui/button";
+   ```
+
+2. Order: external packages first, then internal (`@/`) imports
+
+3. Use `import type` for type-only imports:
+   ```typescript
+   import type { ComponentProps, ValidComponent } from "solid-js";
+   ```
+
+### File Naming
+
+- **Components**: PascalCase (`Counter.tsx`, `Nav.tsx`)
+- **UI components**: lowercase in `ui/` folder (`button.tsx`)
+- **Utilities/hooks**: kebab-case (`use-mobile.ts`)
+- **Routes**: lowercase (`index.tsx`, `about.tsx`)
+
+### Component Patterns
+
+**Route/Page components** - default export function:
+```typescript
+export default function Home() {
+  return <main>...</main>;
+}
+```
+
+**Reusable UI components** - named arrow function with generics:
+```typescript
+export const Button = <T extends ValidComponent = "button">(
+  props: ButtonProps<T>
+) => {
+  const [local, rest] = splitProps(props, ["class", "variant", "size"]);
+  return <ButtonPrimitive class={buttonVariants({...})} {...rest} />;
+};
+```
+
+### SolidJS Patterns
+
+1. **Signals for state**:
+   ```typescript
+   const [count, setCount] = createSignal(0);
+   ```
+
+2. **Call signals as functions** to read values:
+   ```typescript
+   // Correct
+   <span>{count()}</span>
+   
+   // Wrong - don't use like React
+   <span>{count}</span>
+   ```
+
+3. **Use `splitProps`** to separate component props:
+   ```typescript
+   const [local, rest] = splitProps(props, ["class", "variant"]);
+   ```
+
+4. **SSR awareness** - check `isServer` for browser-only code:
+   ```typescript
+   import { isServer } from "solid-js/web";
+   if (isServer) return () => false;
+   ```
+
+5. **Cleanup with `onCleanup`** for event listeners
+
+### Styling
+
+1. **Use `class` attribute** (not `className`):
+   ```tsx
+   <div class="flex items-center gap-2">
+   ```
+
+2. **CVA for component variants** with tailwind-merge:
+   ```typescript
+   export const buttonVariants = cva({
+     base: ["inline-flex items-center..."],
+     variants: {
+       variant: { default: "...", destructive: "..." },
+       size: { default: "h-9 px-4", sm: "h-8 px-3" },
+     },
+     defaultVariants: { variant: "default", size: "default" },
+   });
+   ```
+
+3. **Design tokens** via CSS variables (OKLCH color space in `app.css`)
+
+4. **Dark mode** uses Kobalte's `[data-kb-theme="dark"]` selector
+
+### TypeScript
+
+1. **Strict mode enabled** - no implicit any, null checks required
+
+2. **Use `VariantProps`** for CVA component types:
+   ```typescript
+   type ButtonProps = ComponentProps<typeof ButtonPrimitive> &
+     VariantProps<typeof buttonVariants>;
+   ```
+
+3. **Generic components** for polymorphism:
+   ```typescript
+   export const Button = <T extends ValidComponent = "button">(props: ButtonProps<T>) => { ... };
+   ```
+
+### Error Handling
+
+- Use catch-all routes for 404: `[...404].tsx`
+- Check `isServer` before accessing browser APIs
+- Use optional chaining and nullish coalescing for safety
+
+### Routing
+
+- File-based routing in `src/routes/`
+- Use `<A>` component from `@solidjs/router` for internal links
+- External links use standard `<a>` tags
+
+## UI Components
+
+When creating new UI components with Kobalte:
+
+1. Import primitives from `@kobalte/core`:
+   ```typescript
+   import { Root as ButtonPrimitive } from "@kobalte/core/button";
+   ```
+
+2. Create variants with CVA from `@/lib/cva`
+
+3. Use `data-slot` attribute for component parts
+
+4. Export both component and variants for flexibility
+
+## Key Dependencies
+
+- `solid-js`, `@solidjs/start`, `@solidjs/router` - Core framework
+- `@kobalte/core` - Headless UI components  
+- `cva`, `tailwind-merge` - Styling utilities
+- `vinxi` - Build/dev server
