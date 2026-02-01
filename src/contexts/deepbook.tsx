@@ -1,6 +1,10 @@
 import { createContext, useContext, createMemo, JSX } from "solid-js";
 import { DeepBookClient } from "@mysten/deepbook-v3";
-import { useCurrentAccount, useCurrentNetwork, useSuiClient } from "@/contexts/dapp-kit";
+import {
+  useCurrentAccount,
+  useCurrentNetwork,
+  useSuiClient,
+} from "@/contexts/dapp-kit";
 import { useBalanceManager } from "@/contexts/balance-manager";
 import {
   mainnetCoins,
@@ -59,7 +63,9 @@ export function useDeepBook(): DeepBookClient {
 export function useDeepBookAccessor(): () => DeepBookClient {
   const context = useContext(DeepBookContext);
   if (!context) {
-    throw new Error("useDeepBookAccessor must be used within a DeepBookProvider");
+    throw new Error(
+      "useDeepBookAccessor must be used within a DeepBookProvider"
+    );
   }
   return context;
 }

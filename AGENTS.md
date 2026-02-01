@@ -14,11 +14,13 @@ This document provides guidelines for AI agents working in this codebase.
 ## Build/Dev Commands
 
 ```bash
-bun dev      # Development server
-bun build    # Production build
-bun start    # Start production server
-bun lint     # Run ESLint checks
-bun lint:fix # Run ESLint with auto-fix
+bun dev          # Development server
+bun build        # Production build
+bun start        # Start production server
+bun lint         # Run ESLint checks
+bun lint:fix     # Run ESLint with auto-fix
+bun format       # Format code with Prettier
+bun format:check # Check formatting without writing
 ```
 
 **Note**: No test commands configured yet. No testing framework exists.
