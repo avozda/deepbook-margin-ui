@@ -5,10 +5,12 @@ This document provides guidelines for AI agents working in this codebase.
 ## Technology Stack
 
 - **Framework**: SolidJS + SolidStart (SSR-enabled)
-- **Build Tool**: Vinxi
+- **Build Tool**: Vinxi (uses Vite under the hood)
 - **Styling**: Tailwind CSS v4 (CSS-first config)
 - **UI Components**: Kobalte (headless primitives)
 - **Language**: TypeScript (strict mode)
+- **Linting**: ESLint (code quality, unused vars, SolidJS patterns)
+- **Formatting**: Prettier (code style)
 - **Node.js**: >=22 required
 
 ## Build/Dev Commands
@@ -24,6 +26,29 @@ bun format:check # Check formatting without writing
 ```
 
 **Note**: No test commands configured yet. No testing framework exists.
+
+## Linting & Formatting
+
+### ESLint
+
+- **Purpose**: Code quality checks, unused variables/imports, SolidJS reactivity patterns
+- **Config**: `eslint.config.js` (flat config format)
+- **Type checking**: Disabled - TypeScript handles type checking
+- **Rules**: Focuses on unused vars, SolidJS best practices, basic code quality
+
+### Prettier
+
+- **Purpose**: Code formatting (indentation, quotes, semicolons, line breaks)
+- **Config**: `.prettierrc`
+- **Settings**:
+  - Double quotes
+  - Semicolons enabled
+  - 2-space indentation
+  - Trailing commas (ES5)
+  - 80 character line width
+  - Tailwind CSS class sorting (via plugin)
+
+**Integration**: ESLint and Prettier are configured to work together via `eslint-config-prettier` to avoid conflicts.
 
 ## Project Structure
 
@@ -194,3 +219,5 @@ When creating new UI components with Kobalte:
 - `@kobalte/core` - Headless UI components
 - `cva`, `tailwind-merge` - Styling utilities
 - `vinxi` - Build/dev server
+- `eslint`, `typescript-eslint`, `eslint-plugin-solid` - Linting
+- `prettier`, `prettier-plugin-tailwindcss` - Code formatting
