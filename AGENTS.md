@@ -17,9 +17,11 @@ This document provides guidelines for AI agents working in this codebase.
 bun dev      # Development server
 bun build    # Production build
 bun start    # Start production server
+bun lint     # Run ESLint checks
+bun lint:fix # Run ESLint with auto-fix
 ```
 
-**Note**: No lint or test commands configured. No ESLint, Prettier, or testing framework exists yet.
+**Note**: No test commands configured yet. No testing framework exists.
 
 ## Project Structure
 

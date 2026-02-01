@@ -31,8 +31,10 @@ export function DAppKitProvider(props: {
   dAppKit: DAppKit<any, any>;
   children: JSX.Element;
 }) {
+  // eslint-disable-next-line solid/reactivity
+  const value = props.dAppKit;
   return (
-    <DAppKitContext.Provider value={props.dAppKit}>
+    <DAppKitContext.Provider value={value}>
       {props.children}
     </DAppKitContext.Provider>
   );
@@ -63,18 +65,20 @@ export function useWalletConnection() {
 
 export function useCurrentAccount() {
   const connection = useWalletConnection();
-  return createMemo(() => connection().account);
+  const account = createMemo(() => connection().account);
+  return account;
 }
 
 export function useCurrentWallet() {
   const connection = useWalletConnection();
-  return createMemo(() => ({
+  const wallet = createMemo(() => ({
     wallet: connection().wallet,
     isConnected: connection().isConnected,
     isConnecting: connection().isConnecting,
     isReconnecting: connection().isReconnecting,
     isDisconnected: connection().isDisconnected,
   }));
+  return wallet;
 }
 
 export function useWallets() {
