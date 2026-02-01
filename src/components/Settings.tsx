@@ -23,9 +23,7 @@ export const Settings = () => {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
-          <DialogDescription>
-            Configure your preferences.
-          </DialogDescription>
+          <DialogDescription>Configure your preferences.</DialogDescription>
         </DialogHeader>
         <div class="flex flex-col gap-4">
           <p class="text-muted-foreground text-sm">
