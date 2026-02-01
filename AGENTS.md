@@ -41,6 +41,7 @@ src/
 ### Imports
 
 1. Use `@/` path alias for `src/` imports:
+
    ```typescript
    import { Button } from "@/components/ui/button";
    ```
@@ -51,6 +52,7 @@ src/
    ```typescript
    import type { ComponentProps, ValidComponent } from "solid-js";
    ```
+4. Do not write comments
 
 ### File Naming
 
@@ -62,6 +64,7 @@ src/
 ### Component Patterns
 
 **Route/Page components** - default export function:
+
 ```typescript
 export default function Home() {
   return <main>...</main>;
@@ -69,6 +72,7 @@ export default function Home() {
 ```
 
 **Reusable UI components** - named arrow function with generics:
+
 ```typescript
 export const Button = <T extends ValidComponent = "button">(
   props: ButtonProps<T>
@@ -81,25 +85,29 @@ export const Button = <T extends ValidComponent = "button">(
 ### SolidJS Patterns
 
 1. **Signals for state**:
+
    ```typescript
    const [count, setCount] = createSignal(0);
    ```
 
 2. **Call signals as functions** to read values:
+
    ```typescript
    // Correct
    <span>{count()}</span>
-   
+
    // Wrong - don't use like React
    <span>{count}</span>
    ```
 
 3. **Use `splitProps`** to separate component props:
+
    ```typescript
    const [local, rest] = splitProps(props, ["class", "variant"]);
    ```
 
 4. **SSR awareness** - check `isServer` for browser-only code:
+
    ```typescript
    import { isServer } from "solid-js/web";
    if (isServer) return () => false;
@@ -110,11 +118,13 @@ export const Button = <T extends ValidComponent = "button">(
 ### Styling
 
 1. **Use `class` attribute** (not `className`):
+
    ```tsx
    <div class="flex items-center gap-2">
    ```
 
 2. **CVA for component variants** with tailwind-merge:
+
    ```typescript
    export const buttonVariants = cva({
      base: ["inline-flex items-center..."],
@@ -135,6 +145,7 @@ export const Button = <T extends ValidComponent = "button">(
 1. **Strict mode enabled** - no implicit any, null checks required
 
 2. **Use `VariantProps`** for CVA component types:
+
    ```typescript
    type ButtonProps = ComponentProps<typeof ButtonPrimitive> &
      VariantProps<typeof buttonVariants>;
@@ -162,6 +173,7 @@ export const Button = <T extends ValidComponent = "button">(
 When creating new UI components with Kobalte:
 
 1. Import primitives from `@kobalte/core`:
+
    ```typescript
    import { Root as ButtonPrimitive } from "@kobalte/core/button";
    ```
@@ -175,6 +187,6 @@ When creating new UI components with Kobalte:
 ## Key Dependencies
 
 - `solid-js`, `@solidjs/start`, `@solidjs/router` - Core framework
-- `@kobalte/core` - Headless UI components  
+- `@kobalte/core` - Headless UI components
 - `cva`, `tailwind-merge` - Styling utilities
 - `vinxi` - Build/dev server

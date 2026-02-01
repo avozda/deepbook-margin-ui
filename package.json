@@ -8,8 +8,12 @@
   },
   "dependencies": {
     "@kobalte/core": "^0.13.11",
+    "@mysten/dapp-kit-core": "^1.0.2",
+    "@mysten/deepbook-v3": "^1.0.0",
+    "@mysten/sui": "^2.1.0",
     "@solidjs/router": "^0.15.0",
     "@solidjs/start": "^1.1.0",
+    "@tanstack/solid-query": "^5.90.23",
     "cva": "^1.0.0-beta.4",
     "solid-js": "^1.9.5",
     "tailwind-merge": "^3.4.0",
