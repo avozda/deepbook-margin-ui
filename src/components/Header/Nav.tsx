@@ -1,5 +1,5 @@
-import { ConnectButton } from "@/components/ConnectButton";
-import { Settings } from "@/components/Settings";
+import { ConnectButton } from "@/components/Header/ConnectButton";
+import { Settings } from "@/components/Header/Settings";
 
 export const Nav = () => {
   return (
