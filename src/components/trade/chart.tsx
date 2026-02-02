@@ -13,7 +13,6 @@ export const Chart = () => {
   const candlesQuery = useCandleData();
   let containerRef: HTMLDivElement | undefined;
   let chartInstance: IChartApi | null = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let candlestickSeries: any = null;
 
   const formatCandles = (

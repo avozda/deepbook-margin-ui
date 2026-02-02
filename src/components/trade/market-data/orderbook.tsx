@@ -136,7 +136,7 @@ export const OrderBook = () => {
   });
 
   return (
-    <Show when={!orderbookQuery.isLoading} fallback={<div></div>}>
+    <Show when={!orderbookQuery.isLoading} fallback={<div />}>
       <Show when={orderbookQuery.data} fallback={<div>Error</div>}>
         {(data) => (
           <div

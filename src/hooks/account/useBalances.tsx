@@ -20,32 +20,45 @@ export function useBalances() {
   }));
 }
 
-export function useBalance(assetType: string, scalar: number) {
+export function useBalance(
+  assetType: string | (() => string),
+  scalar: number | (() => number)
+) {
   const { data: balances } = useBalances();
+  const getAssetType =
+    typeof assetType === "function" ? assetType : () => assetType;
+  const getScalar = typeof scalar === "function" ? scalar : () => scalar;
 
   return useQuery(() => ({
-    queryKey: ["walletBalance", assetType],
+    queryKey: ["walletBalance", getAssetType()],
     queryFn: () => {
       const rawWalletBalance = balances!.find(
         (coin: any) =>
-          normalizeStructTag(coin.coinType) === normalizeStructTag(assetType)
+          normalizeStructTag(coin.coinType) ===
+          normalizeStructTag(getAssetType())
       )?.totalBalance;
       return rawWalletBalance !== undefined
-        ? parseInt(rawWalletBalance) / scalar
+        ? parseInt(rawWalletBalance) / getScalar()
         : 0;
     },
     enabled: balances !== undefined,
   }));
 }
 
-export function useManagerBalance(managerKey: string, coinKey: string) {
+export function useManagerBalance(
+  managerKey: string | (() => string),
+  coinKey: string | (() => string)
+) {
   const dbClient = useDeepBook();
+  const getManagerKey =
+    typeof managerKey === "function" ? managerKey : () => managerKey;
+  const getCoinKey = typeof coinKey === "function" ? coinKey : () => coinKey;
 
   return useQuery(() => ({
-    queryKey: ["managerBalance", managerKey, coinKey],
+    queryKey: ["managerBalance", getManagerKey(), getCoinKey()],
     queryFn: async () =>
-      await dbClient?.checkManagerBalance(managerKey, coinKey),
-    enabled: !!dbClient && coinKey.length > 0,
+      await dbClient?.checkManagerBalance(getManagerKey(), getCoinKey()),
+    enabled: !!dbClient && getCoinKey().length > 0,
   }));
 }
 

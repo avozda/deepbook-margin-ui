@@ -92,7 +92,7 @@ export const OpenOrders = () => {
               <TableHead class="pl-4">EXPIRATION</TableHead>
               <TableHead>QUANTITY</TableHead>
               <TableHead>ID</TableHead>
-              <TableHead class="pr-4 text-right"></TableHead>
+              <TableHead class="pr-4 text-right" />
             </TableRow>
           </TableHeader>
           <TableBody class="text-xs [&_tr]:border-none">

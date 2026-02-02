@@ -1,25 +1,25 @@
-import { splitProps, type ComponentProps, type ValidComponent } from "solid-js"
-import { Switch as SwitchPrimitive } from "@kobalte/core/switch"
+import { splitProps, type ComponentProps, type ValidComponent } from "solid-js";
+import { Switch as SwitchPrimitive } from "@kobalte/core/switch";
 
-import { cx } from "@/lib/cva"
+import { cx } from "@/lib/cva";
 
 export type SwitchProps<T extends ValidComponent = "div"> = ComponentProps<
   typeof SwitchPrimitive<T>
->
+>;
 
 export const Switch = <T extends ValidComponent = "div">(
-  props: SwitchProps<T>,
+  props: SwitchProps<T>
 ) => {
-  return <SwitchPrimitive data-slot="switch" {...props} />
-}
+  return <SwitchPrimitive data-slot="switch" {...props} />;
+};
 
 export type SwitchControlProps<T extends ValidComponent = "div"> =
-  ComponentProps<typeof SwitchPrimitive.Control<T>>
+  ComponentProps<typeof SwitchPrimitive.Control<T>>;
 
 export const SwitchControl = <T extends ValidComponent = "div">(
-  props: SwitchControlProps<T>,
+  props: SwitchControlProps<T>
 ) => {
-  const [, rest] = splitProps(props as SwitchControlProps, ["class"])
+  const [, rest] = splitProps(props as SwitchControlProps, ["class"]);
 
   return (
     <SwitchPrimitive.Control
@@ -29,21 +29,21 @@ export const SwitchControl = <T extends ValidComponent = "div">(
         "data-checked:bg-primary",
         "peer-focus-visible/switch-input:border-ring peer-focus-visible/switch-input:ring-ring/50 peer-focus-visible/switch-input:ring-[3px]",
         "data-disabled:cursor-not-allowed data-disabled:opacity-50",
-        props.class,
+        props.class
       )}
       {...rest}
     />
-  )
-}
+  );
+};
 
 export type SwitchThumbProps<T extends ValidComponent = "div"> = ComponentProps<
   typeof SwitchPrimitive.Thumb<T>
->
+>;
 
 export const SwitchThumb = <T extends ValidComponent = "div">(
-  props: SwitchThumbProps<T>,
+  props: SwitchThumbProps<T>
 ) => {
-  const [, rest] = splitProps(props as SwitchThumbProps, ["class"])
+  const [, rest] = splitProps(props as SwitchThumbProps, ["class"]);
 
   return (
     <SwitchPrimitive.Thumb
@@ -51,20 +51,20 @@ export const SwitchThumb = <T extends ValidComponent = "div">(
       class={cx(
         "bg-background dark:bg-foreground pointer-events-none size-4 rounded-full transition-transform data-checked:translate-x-[calc(100%-2px)]",
         "dark:data-checked:bg-primary-foreground dark:bg-foreground",
-        props.class,
+        props.class
       )}
       {...rest}
     />
-  )
-}
+  );
+};
 
 export type SwitchInputProps<T extends ValidComponent = "input"> =
-  ComponentProps<typeof SwitchPrimitive.Input<T>>
+  ComponentProps<typeof SwitchPrimitive.Input<T>>;
 
 export const SwitchInput = <T extends ValidComponent = "input">(
-  props: SwitchInputProps<T>,
+  props: SwitchInputProps<T>
 ) => {
-  const [, rest] = splitProps(props as SwitchInputProps, ["class"])
+  const [, rest] = splitProps(props as SwitchInputProps, ["class"]);
 
   return (
     <SwitchPrimitive.Input
@@ -72,16 +72,16 @@ export const SwitchInput = <T extends ValidComponent = "input">(
       class={cx("peer/switch-input", props.class)}
       {...rest}
     />
-  )
-}
+  );
+};
 
 export type SwitchLabelProps<T extends ValidComponent = "label"> =
-  ComponentProps<typeof SwitchPrimitive.Label<T>>
+  ComponentProps<typeof SwitchPrimitive.Label<T>>;
 
 export const SwitchLabel = <T extends ValidComponent = "label">(
-  props: SwitchLabelProps<T>,
+  props: SwitchLabelProps<T>
 ) => {
-  const [, rest] = splitProps(props as SwitchLabelProps, ["class"])
+  const [, rest] = splitProps(props as SwitchLabelProps, ["class"]);
 
   return (
     <SwitchPrimitive.Label
@@ -90,20 +90,20 @@ export const SwitchLabel = <T extends ValidComponent = "label">(
         "text-sm font-medium select-none",
         "data-disabled:pointer-events-none data-disabled:cursor-not-allowed data-disabled:opacity-50",
         "data-invalid:text-destructive",
-        props.class,
+        props.class
       )}
       {...rest}
     />
-  )
-}
+  );
+};
 
 export type SwitchErrorMessageProps<T extends ValidComponent = "div"> =
-  ComponentProps<typeof SwitchPrimitive.ErrorMessage<T>>
+  ComponentProps<typeof SwitchPrimitive.ErrorMessage<T>>;
 
 export const SwitchErrorMessage = <T extends ValidComponent = "div">(
-  props: SwitchErrorMessageProps<T>,
+  props: SwitchErrorMessageProps<T>
 ) => {
-  const [, rest] = splitProps(props as SwitchErrorMessageProps, ["class"])
+  const [, rest] = splitProps(props as SwitchErrorMessageProps, ["class"]);
 
   return (
     <SwitchPrimitive.ErrorMessage
@@ -111,16 +111,16 @@ export const SwitchErrorMessage = <T extends ValidComponent = "div">(
       class={cx("text-destructive text-sm", props.class)}
       {...rest}
     />
-  )
-}
+  );
+};
 
 export type SwitchDescriptionProps<T extends ValidComponent = "div"> =
-  ComponentProps<typeof SwitchPrimitive.Description<T>>
+  ComponentProps<typeof SwitchPrimitive.Description<T>>;
 
 export const SwitchDescription = <T extends ValidComponent = "div">(
-  props: SwitchDescriptionProps<T>,
+  props: SwitchDescriptionProps<T>
 ) => {
-  const [, rest] = splitProps(props as SwitchDescriptionProps, ["class"])
+  const [, rest] = splitProps(props as SwitchDescriptionProps, ["class"]);
 
   return (
     <SwitchPrimitive.Description
@@ -128,5 +128,5 @@ export const SwitchDescription = <T extends ValidComponent = "div">(
       class={cx("text-muted-foreground text-sm", props.class)}
       {...rest}
     />
-  )
-}
+  );
+};

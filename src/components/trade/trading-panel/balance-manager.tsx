@@ -44,11 +44,11 @@ export const BalanceManager = () => {
   const selectedCoin = (): Coin | undefined => coins()[selectedAsset()];
 
   const { data: walletBalance } = useBalance(
-    selectedCoin()?.type ?? "",
-    selectedCoin()?.scalar ?? 1
+    () => selectedCoin()?.type ?? "",
+    () => selectedCoin()?.scalar ?? 1
   );
   const { data: managerBalance, refetch: refetchManagerBalance } =
-    useManagerBalance(balanceManagerKey(), selectedAsset());
+    useManagerBalance(balanceManagerKey, selectedAsset);
 
   createEffect(() => {
     if (isOpen()) {
