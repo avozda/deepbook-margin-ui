@@ -74,37 +74,37 @@ export default function AppLayout(props: ParentProps) {
 
   return (
     <SidebarProvider>
-      <div class="flex h-screen w-full">
-        <PairTable />
-        <div class="flex flex-1 flex-col overflow-hidden">
-          <Nav />
-          <main class="flex-1 overflow-auto">
-            <Show
-              when={!poolsQuery.isLoading}
-              fallback={
-                <div class="flex h-full items-center justify-center">
-                  <p class="text-muted-foreground">Loading...</p>
-                </div>
-              }
-            >
-              <Show
-                when={selectedPool()}
-                fallback={
-                  <div class="flex h-full items-center justify-center">
-                    <p class="text-muted-foreground">Pool not found</p>
-                  </div>
-                }
-              >
-                {(pool) => (
-                  <PoolProvider pool={pool()}>
+      <Show
+        when={!poolsQuery.isLoading}
+        fallback={
+          <div class="flex h-screen w-full items-center justify-center">
+            <p class="text-muted-foreground">Loading...</p>
+          </div>
+        }
+      >
+        <Show
+          when={selectedPool()}
+          fallback={
+            <div class="flex h-screen w-full items-center justify-center">
+              <p class="text-muted-foreground">Pool not found</p>
+            </div>
+          }
+        >
+          {(pool) => (
+            <PoolProvider pool={pool()}>
+              <div class="flex h-screen w-full">
+                <PairTable />
+                <div class="flex flex-1 flex-col overflow-hidden">
+                  <Nav />
+                  <main class="flex-1 overflow-auto">
                     <Suspense>{props.children}</Suspense>
-                  </PoolProvider>
-                )}
-              </Show>
-            </Show>
-          </main>
-        </div>
-      </div>
+                  </main>
+                </div>
+              </div>
+            </PoolProvider>
+          )}
+        </Show>
+      </Show>
     </SidebarProvider>
   );
 }
