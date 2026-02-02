@@ -92,15 +92,27 @@ src/
 
 ### Component Patterns
 
-**Route/Page components** - default export function:
+**Always use named exports and arrow functions**:
 
 ```typescript
-export default function Home() {
-  return <main>...</main>;
-}
+export const MyComponent = () => {
+  return <div>...</div>;
+};
 ```
 
-**Reusable UI components** - named arrow function with generics:
+**Components with props**:
+
+```typescript
+type MyComponentProps = {
+  title: string;
+};
+
+export const MyComponent = (props: MyComponentProps) => {
+  return <div>{props.title}</div>;
+};
+```
+
+**Generic UI components**:
 
 ```typescript
 export const Button = <T extends ValidComponent = "button">(
@@ -109,6 +121,50 @@ export const Button = <T extends ValidComponent = "button">(
   const [local, rest] = splitProps(props, ["class", "variant", "size"]);
   return <ButtonPrimitive class={buttonVariants({...})} {...rest} />;
 };
+```
+
+**Exception - SolidStart requires default exports for**:
+
+- `app.tsx` (root App component)
+- Route files in `routes/` folder (`index.tsx`, `[...404].tsx`, etc.)
+- `entry-server.tsx` (server handler)
+
+For these files, use named function declarations to preserve the function name (useful for debugging):
+
+```typescript
+export default function Home() {
+  return <main>...</main>;
+}
+```
+
+### Dialog Components
+
+Components that open dialogs should be self-contained — include the Dialog, DialogTrigger, and DialogContent within the component itself:
+
+```typescript
+export const Settings = () => {
+  return (
+    <Dialog>
+      <DialogTrigger as={Button} variant="ghost" size="icon">
+        <SettingsIcon class="size-5" />
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Settings</DialogTitle>
+        </DialogHeader>
+        {/* Content here */}
+      </DialogContent>
+    </Dialog>
+  );
+};
+```
+
+This pattern keeps dialog logic encapsulated and makes components easier to use:
+
+```typescript
+// Usage is simple - no wrapper needed
+<Settings />
+<ConnectButton />
 ```
 
 ### SolidJS Patterns

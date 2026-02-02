@@ -1,32 +1,105 @@
-# SolidStart
+# DeepBook Margin UI
 
-Everything you need to build a Solid project, powered by [`solid-start`](https://start.solidjs.com);
+A SolidJS + SolidStart application for DeepBook margin trading.
 
-## Creating a project
+## Prerequisites
+
+- **Node.js**: >=22
+- **Bun**: Latest version ([install Bun](https://bun.sh))
+
+## Getting Started
+
+### Install Dependencies
 
 ```bash
-# create a new project in the current directory
-npm init solid@latest
-
-# create a new project in my-app
-npm init solid@latest my-app
+bun install
 ```
 
-## Developing
+### Development
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+Start the development server:
 
 ```bash
-npm run dev
+bun dev
+```
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+Or start the server and open the app in a new browser tab:
+
+```bash
+bun dev -- --open
 ```
 
 ## Building
 
-Solid apps are built with _presets_, which optimise your project for deployment to different environments.
+Build the application for production:
 
-By default, `npm run build` will generate a Node app that you can run with `npm start`. To use a different preset, add it to the `devDependencies` in `package.json` and specify in your `app.config.js`.
+```bash
+bun build
+```
 
-## This project was created with the [Solid CLI](https://github.com/solidjs-community/solid-cli)
+Start the production server:
+
+```bash
+bun start
+```
+
+## Code Quality
+
+### Linting
+
+Run ESLint to check for code quality issues:
+
+```bash
+bun lint
+```
+
+Auto-fix linting issues:
+
+```bash
+bun lint:fix
+```
+
+### Formatting
+
+Format all files with Prettier:
+
+```bash
+bun format
+```
+
+Check formatting without making changes:
+
+```bash
+bun format:check
+```
+
+## Tech Stack
+
+- **Framework**: SolidJS + SolidStart (SSR-enabled)
+- **Build Tool**: Vinxi (uses Vite under the hood)
+- **Package Manager**: Bun
+- **Styling**: Tailwind CSS v4
+- **UI Components**: Kobalte (headless primitives)
+- **Language**: TypeScript (strict mode)
+- **Linting**: ESLint
+- **Formatting**: Prettier
+
+## Project Structure
+
+```
+src/
+├── app.tsx              # Root app with Router and Suspense
+├── app.css              # Tailwind v4 config + design tokens
+├── routes/              # File-based routing
+│   ├── index.tsx       # Home page (/)
+│   └── [...404].tsx    # 404 catch-all
+├── components/          # React components
+│   └── ui/             # Reusable UI components
+├── contexts/           # React contexts
+├── lib/                # Utilities
+└── constants/          # Constants
+```
+
+## License
+
+See [LICENSE](LICENSE) file for details.

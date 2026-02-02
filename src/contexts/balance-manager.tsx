@@ -18,7 +18,7 @@ type BalanceManagerContextValue = {
 
 const BalanceManagerContext = createContext<BalanceManagerContextValue>();
 
-export function BalanceManagerProvider(props: { children: JSX.Element }) {
+export const BalanceManagerProvider = (props: { children: JSX.Element }) => {
   const account = useCurrentAccount();
 
   const balanceManagerKey = createMemo(() => {
@@ -77,9 +77,9 @@ export function BalanceManagerProvider(props: { children: JSX.Element }) {
       {props.children}
     </BalanceManagerContext.Provider>
   );
-}
+};
 
-export function useBalanceManager(): BalanceManagerContextValue {
+export const useBalanceManager = (): BalanceManagerContextValue => {
   const context = useContext(BalanceManagerContext);
   if (!context) {
     throw new Error(
@@ -87,4 +87,4 @@ export function useBalanceManager(): BalanceManagerContextValue {
     );
   }
   return context;
-}
+};

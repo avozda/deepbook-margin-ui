@@ -15,13 +15,12 @@ import {
 
 const DeepBookContext = createContext<() => DeepBookClient>();
 
-export function DeepBookProvider(props: { children: JSX.Element }) {
+export const DeepBookProvider = (props: { children: JSX.Element }) => {
   const client = useSuiClient();
   const network = useCurrentNetwork();
   const account = useCurrentAccount();
   const { balanceManagerAddress } = useBalanceManager();
 
-  // Reinitialize when account, network, or balance manager changes
   const deepBookClient = createMemo(() => {
     const net = network();
     const addr = account()?.address ?? "";
@@ -49,18 +48,17 @@ export function DeepBookProvider(props: { children: JSX.Element }) {
       {props.children}
     </DeepBookContext.Provider>
   );
-}
+};
 
-export function useDeepBook(): DeepBookClient {
+export const useDeepBook = (): DeepBookClient => {
   const context = useContext(DeepBookContext);
   if (!context) {
     throw new Error("useDeepBook must be used within a DeepBookProvider");
   }
   return context();
-}
+};
 
-// Accessor version if you need reactivity
-export function useDeepBookAccessor(): () => DeepBookClient {
+export const useDeepBookAccessor = (): (() => DeepBookClient) => {
   const context = useContext(DeepBookContext);
   if (!context) {
     throw new Error(
@@ -68,4 +66,4 @@ export function useDeepBookAccessor(): () => DeepBookClient {
     );
   }
   return context;
-}
+};
