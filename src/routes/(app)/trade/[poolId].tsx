@@ -1,5 +1,6 @@
 import { Chart } from "@/components/trade/chart";
 import { MarketData } from "@/components/trade/market-data/market-data";
+import { TradingPanel } from "@/components/trade/trading-panel/trading-panel";
 
 export default function Trade() {
   return (
@@ -14,7 +15,7 @@ export default function Trade() {
           </div>
           <div class="col-span-1 border-l md:col-start-3 md:col-end-4 md:row-start-1 md:row-end-3">
             <div class="flex h-full items-center justify-center">
-              <p class="text-muted-foreground text-sm">Trade Panel</p>
+              <TradingPanel />
             </div>
           </div>
           <div class="col-span-1 overflow-y-auto border-t md:col-start-1 md:col-end-3">

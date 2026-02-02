@@ -1,4 +1,4 @@
-import { createSignal, createMemo, For, Show, createEffect } from "solid-js";
+import { createSignal, createMemo, For, Show, onMount } from "solid-js";
 import { useColorMode } from "@kobalte/core";
 import { useCurrentPool } from "@/contexts/pool";
 import { useOrderbook, type OrderbookEntry } from "@/hooks/market/useOrderbook";
@@ -124,9 +124,15 @@ export const OrderBook = () => {
     container.scrollTop = scrollPosition;
   };
 
-  createEffect(() => {
-    if (!orderbookQuery.data) return;
-    setTimeout(scrollToSpread, 0);
+  onMount(() => {
+    const checkAndScroll = () => {
+      if (orderbookQuery.data && spreadRowRef && tableContainerRef) {
+        scrollToSpread();
+      } else {
+        requestAnimationFrame(checkAndScroll);
+      }
+    };
+    requestAnimationFrame(checkAndScroll);
   });
 
   return (
