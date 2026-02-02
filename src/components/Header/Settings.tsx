@@ -1,3 +1,4 @@
+import { createSignal } from "solid-js";
 import { Settings as SettingsIcon, Sun, Moon, Copy } from "lucide-solid";
 import { useColorMode } from "@kobalte/core";
 import { createForm } from "@tanstack/solid-form";
@@ -51,12 +52,15 @@ const ImportBalanceManagerForm = () => {
   const account = useCurrentAccount();
   const suiClient = useSuiClient();
   const { setBalanceManager } = useBalanceManager();
+  const [submitError, setSubmitError] = createSignal<string | null>(null);
 
   const form = createForm(() => ({
     defaultValues: {
       balanceManagerAddress: "",
     },
     onSubmit: async ({ value }) => {
+      setSubmitError(null);
+
       const parseResult = balanceManagerSchema.safeParse(value);
       if (!parseResult.success) {
         return;
@@ -71,7 +75,9 @@ const ImportBalanceManagerForm = () => {
       });
 
       if (!res || res?.error) {
-        console.error("Failed to import balance manager:", res?.error);
+        setSubmitError(
+          `Failed to import: ${res?.error?.code || "Object not found"}`
+        );
         return;
       }
 
@@ -82,7 +88,7 @@ const ImportBalanceManagerForm = () => {
       }::balance_manager::BalanceManager`;
 
       if (res.data?.type !== expectedType) {
-        console.error("Balance manager does not exist");
+        setSubmitError("This address is not a valid balance manager");
         return;
       }
 
@@ -90,7 +96,7 @@ const ImportBalanceManagerForm = () => {
         fields?: { owner?: string };
       } | null;
       if (content?.fields?.owner !== account()?.address) {
-        console.error("You don't own this balance manager");
+        setSubmitError("You don't own this balance manager");
         return;
       }
 
@@ -101,8 +107,18 @@ const ImportBalanceManagerForm = () => {
   const addressErrors = () => {
     const fieldState = form.useStore((state) => state.fieldMeta);
     const meta = fieldState().balanceManagerAddress;
-    if (!meta?.isTouched || !meta?.errors?.length) return [];
-    return meta.errors.map((e) => ({ message: String(e) }));
+    const errors: { message: string }[] = [];
+
+    if (meta?.isTouched && meta?.errors?.length) {
+      errors.push(...meta.errors.map((e) => ({ message: String(e) })));
+    }
+
+    const error = submitError();
+    if (error) {
+      errors.push({ message: error });
+    }
+
+    return errors;
   };
 
   return (
@@ -118,7 +134,8 @@ const ImportBalanceManagerForm = () => {
         name="balanceManagerAddress"
         validators={{
           onChange: ({ value }) => {
-            const result = balanceManagerSchema.shape.balanceManagerAddress.safeParse(value);
+            const result =
+              balanceManagerSchema.shape.balanceManagerAddress.safeParse(value);
             return result.success ? undefined : result.error.issues[0]?.message;
           },
         }}
@@ -127,7 +144,10 @@ const ImportBalanceManagerForm = () => {
           <TextField
             class="grow"
             value={field().state.value}
-            onChange={(value: string) => field().handleChange(value)}
+            onChange={(value: string) => {
+              setSubmitError(null);
+              field().handleChange(value);
+            }}
             onBlur={() => field().handleBlur()}
             validationState={addressErrors().length > 0 ? "invalid" : "valid"}
           >
