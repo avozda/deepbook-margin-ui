@@ -47,6 +47,6 @@ export function useOrderbook() {
   return useQuery(() => ({
     queryKey: ["orderbook", pool().pool_name],
     queryFn: async () => await fetchOrderbookInfo(pool().pool_name),
-    refetchInterval: 100000,
+    refetchInterval: 1000,
   }));
 }

@@ -269,6 +269,16 @@ When creating new UI components with Kobalte:
 
 4. Export both component and variants for flexibility
 
+## Utility Functions
+
+All formatting and helper functions should be placed in `src/lib/utils.ts`:
+
+- `truncateAddress` - truncates wallet addresses for display
+- `formatVolume` - formats numbers with compact notation (e.g., 1.2M)
+- `formatPrice` - formats prices with currency symbol
+
+When creating new formatting functions, add them to `utils.ts` rather than defining them in components.
+
 ## Key Dependencies
 
 - `solid-js`, `@solidjs/start`, `@solidjs/router` - Core framework
