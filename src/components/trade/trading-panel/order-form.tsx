@@ -1,18 +1,19 @@
 import { createSignal, createMemo, createEffect, Show } from "solid-js";
 import { Transaction } from "@mysten/sui/transactions";
+import { useQueryClient } from "@tanstack/solid-query";
 import { useCurrentPool } from "@/contexts/pool";
-import { useDeepBook } from "@/contexts/deepbook";
+import { useDeepBookAccessor } from "@/contexts/deepbook";
 import { useSignAndExecuteTransaction } from "@/contexts/dapp-kit";
 import { useBalanceManager } from "@/contexts/balance-manager";
 import { useManagerBalance } from "@/hooks/account/useBalances";
-import { useOpenOrders } from "@/hooks/account/useOpenOrders";
 import { useOrderbook } from "@/hooks/market/useOrderbook";
 import { Button } from "@/components/ui/button";
 import {
-  TextField,
-  TextFieldInput,
-  TextFieldLabel,
-} from "@/components/ui/text-field";
+  NumberField,
+  NumberFieldGroup,
+  NumberFieldInput,
+  NumberFieldLabel,
+} from "@/components/ui/number-field";
 import type { PositionType, OrderExecutionType } from "./trading-panel";
 
 type OrderFormProps = {
@@ -22,19 +23,16 @@ type OrderFormProps = {
 
 export const OrderForm = (props: OrderFormProps) => {
   const { pool, round } = useCurrentPool();
-  const dbClient = useDeepBook();
+  const getDbClient = useDeepBookAccessor();
   const signAndExecuteTransaction = useSignAndExecuteTransaction();
-  const { balanceManagerKey, balanceManagerAddress } = useBalanceManager();
+  const queryClient = useQueryClient();
+  const { balanceManagerAddress } = useBalanceManager();
   const orderbookQuery = useOrderbook();
-  const { data: managerBaseAssetBalance, refetch: refetchManagerBaseBalance } =
-    useManagerBalance(balanceManagerKey(), pool().base_asset_symbol);
-  const {
-    data: managerQuoteAssetBalance,
-    refetch: refetchManagerQuoteBalance,
-  } = useManagerBalance(balanceManagerKey(), pool().quote_asset_symbol);
-  const { refetch: refetchOpenOrders } = useOpenOrders(
-    pool().pool_name,
-    balanceManagerKey()
+  const managerBaseAssetBalanceQuery = useManagerBalance(
+    () => pool().base_asset_symbol
+  );
+  const managerQuoteAssetBalanceQuery = useManagerBalance(
+    () => pool().quote_asset_symbol
   );
 
   const [limitPrice, setLimitPrice] = createSignal<number | undefined>();
@@ -43,8 +41,8 @@ export const OrderForm = (props: OrderFormProps) => {
   let limitPriceFilled = false;
 
   const balanceManagerBalance = createMemo(() => ({
-    baseAsset: managerBaseAssetBalance?.balance ?? 0,
-    quoteAsset: managerQuoteAssetBalance?.balance ?? 0,
+    baseAsset: managerBaseAssetBalanceQuery.data?.balance ?? 0,
+    quoteAsset: managerQuoteAssetBalanceQuery.data?.balance ?? 0,
   }));
 
   const bestBid = createMemo(() => orderbookQuery.data?.bids[0]?.price);
@@ -105,11 +103,12 @@ export const OrderForm = (props: OrderFormProps) => {
     const tx = new Transaction();
 
     try {
+      const dbClient = getDbClient();
       if (props.orderExecutionType === "limit") {
         if (!price) return;
         dbClient.deepBook.placeLimitOrder({
           poolKey: pool().pool_name,
-          balanceManagerKey: balanceManagerKey(),
+          balanceManagerKey: "MANAGER",
           clientOrderId: Date.now().toString(),
           price: price,
           quantity: amt,
@@ -118,7 +117,7 @@ export const OrderForm = (props: OrderFormProps) => {
       } else {
         dbClient.deepBook.placeMarketOrder({
           poolKey: pool().pool_name,
-          balanceManagerKey: balanceManagerKey(),
+          balanceManagerKey: "MANAGER",
           clientOrderId: Date.now().toString(),
           quantity: amt,
           isBid: props.positionType === "buy",
@@ -129,10 +128,10 @@ export const OrderForm = (props: OrderFormProps) => {
         transaction: tx,
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      refetchOpenOrders();
-      refetchManagerBaseBalance();
-      refetchManagerQuoteBalance();
+      queryClient.invalidateQueries({ queryKey: ["orderUpdates"] });
+      queryClient.invalidateQueries({ queryKey: ["accountTradeHistory"] });
+      queryClient.invalidateQueries({ queryKey: ["managerBalance"] });
+
       console.log(`Placed ${props.orderExecutionType} order:`, result);
     } catch (error) {
       console.error(`Error placing ${props.orderExecutionType} order:`, error);
@@ -148,9 +147,14 @@ export const OrderForm = (props: OrderFormProps) => {
     if (props.orderExecutionType === "limit" && (!price || price <= 0))
       return false;
 
+    const minSize = pool().min_size / 10 ** pool().base_asset_decimals;
+    if (amt < minSize) return false;
+
     if (props.positionType === "buy") {
-      const totalValue = (price ?? 0) * amt;
-      if (totalValue > balanceManagerBalance().quoteAsset) return false;
+      if (props.orderExecutionType === "limit") {
+        const totalValue = price! * amt;
+        if (totalValue > balanceManagerBalance().quoteAsset) return false;
+      }
     } else {
       if (amt > balanceManagerBalance().baseAsset) return false;
     }
@@ -166,29 +170,30 @@ export const OrderForm = (props: OrderFormProps) => {
         class="flex flex-col gap-3 px-3 py-3"
       >
         <Show when={props.orderExecutionType === "limit"}>
-          <TextField class="relative">
-            <TextFieldLabel class="absolute top-2 left-2 text-xs">
-              LIMIT
-            </TextFieldLabel>
-            <TextFieldLabel class="absolute top-2 right-2 text-xs">
-              {pool().quote_asset_symbol}
-            </TextFieldLabel>
-            <TextFieldInput
-              class="h-8 [appearance:textfield] rounded-sm pr-14 text-right shadow-none hover:border-gray-300 focus:ring-0 focus:outline-2 focus:-outline-offset-1 focus:outline-gray-400 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-              type="number"
-              placeholder="0.0000"
-              step="any"
-              disabled={!balanceManagerAddress()}
-              value={limitPrice() ?? ""}
-              onInput={(e) =>
-                setLimitPrice(parseFloat(e.currentTarget.value) || undefined)
-              }
-              onBlur={() => {
-                const val = limitPrice();
-                if (val) setLimitPrice(Number(round.quote(val)));
-              }}
-            />
-            <div class="mt-1 flex gap-1">
+          <NumberField
+            rawValue={limitPrice()}
+            onRawValueChange={(value) => setLimitPrice(value || undefined)}
+            minValue={0}
+            formatOptions={{ maximumFractionDigits: 20 }}
+            disabled={!balanceManagerAddress()}
+          >
+            <NumberFieldGroup class="relative">
+              <NumberFieldLabel class="absolute top-2 left-2 text-xs">
+                LIMIT
+              </NumberFieldLabel>
+              <NumberFieldLabel class="absolute top-2 right-2 text-xs">
+                {pool().quote_asset_symbol}
+              </NumberFieldLabel>
+              <NumberFieldInput
+                class="h-8 rounded-sm pr-14 text-right shadow-none hover:border-gray-300 focus:ring-0 focus:outline-2 focus:-outline-offset-1 focus:outline-gray-400"
+                placeholder="0.0000"
+                onBlur={() => {
+                  const val = limitPrice();
+                  if (val) setLimitPrice(Number(round.quote(val)));
+                }}
+              />
+            </NumberFieldGroup>
+            <div class="flex gap-1">
               <Button
                 disabled={!balanceManagerAddress()}
                 class="h-8 rounded-sm hover:border-gray-300"
@@ -208,32 +213,33 @@ export const OrderForm = (props: OrderFormProps) => {
                 BID
               </Button>
             </div>
-          </TextField>
+          </NumberField>
         </Show>
 
-        <TextField class="relative">
-          <TextFieldLabel class="absolute top-2 left-2 text-xs">
-            AMOUNT
-          </TextFieldLabel>
-          <TextFieldLabel class="absolute top-2 right-2 text-xs">
-            {pool().base_asset_symbol}
-          </TextFieldLabel>
-          <TextFieldInput
-            class="h-8 [appearance:textfield] rounded-sm pr-14 text-right shadow-none hover:border-gray-300 focus:ring-0 focus:outline-2 focus:-outline-offset-1 focus:outline-gray-400 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-            type="number"
-            placeholder="0.0000"
-            step="any"
-            disabled={!balanceManagerAddress()}
-            value={amount() ?? ""}
-            onInput={(e) =>
-              setAmount(parseFloat(e.currentTarget.value) || undefined)
-            }
-            onBlur={() => {
-              const val = amount();
-              if (val) setAmount(Number(round.base(val)));
-            }}
-          />
-          <div class="mt-1 flex gap-1">
+        <NumberField
+          rawValue={amount()}
+          onRawValueChange={(value) => setAmount(value || undefined)}
+          minValue={0}
+          formatOptions={{ maximumFractionDigits: 20 }}
+          disabled={!balanceManagerAddress()}
+        >
+          <NumberFieldGroup class="relative">
+            <NumberFieldLabel class="absolute top-2 left-2 text-xs">
+              AMOUNT
+            </NumberFieldLabel>
+            <NumberFieldLabel class="absolute top-2 right-2 text-xs">
+              {pool().base_asset_symbol}
+            </NumberFieldLabel>
+            <NumberFieldInput
+              class="h-8 rounded-sm pr-14 text-right shadow-none hover:border-gray-300 focus:ring-0 focus:outline-2 focus:-outline-offset-1 focus:outline-gray-400"
+              placeholder="0.0000"
+              onBlur={() => {
+                const val = amount();
+                if (val) setAmount(Number(round.base(val)));
+              }}
+            />
+          </NumberFieldGroup>
+          <div class="flex gap-1">
             <Button
               disabled={!balanceManagerAddress()}
               class="h-8 w-1/3 rounded-sm hover:border-gray-300"
@@ -262,11 +268,18 @@ export const OrderForm = (props: OrderFormProps) => {
               MAX
             </Button>
           </div>
-        </TextField>
+        </NumberField>
       </form>
 
       <div class="flex h-full flex-col gap-3 border-t p-3 text-xs">
         <div class="flex flex-col gap-1">
+          <div class="text-muted-foreground flex justify-between">
+            <div>MIN SIZE</div>
+            <div>
+              {pool().min_size / 10 ** pool().base_asset_decimals}{" "}
+              {pool().base_asset_symbol}
+            </div>
+          </div>
           <div class="text-muted-foreground flex justify-between">
             <div>TOTAL</div>
             <div>

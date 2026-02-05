@@ -1,11 +1,11 @@
-import { createSignal, For, Show } from "solid-js";
+import { createSignal, createMemo, For, Show } from "solid-js";
 import { Transaction } from "@mysten/sui/transactions";
+import { useQueryClient } from "@tanstack/solid-query";
 import { useCurrentPool } from "@/contexts/pool";
-import { useDeepBook } from "@/contexts/deepbook";
+import { useDeepBookAccessor } from "@/contexts/deepbook";
 import { useSignAndExecuteTransaction } from "@/contexts/dapp-kit";
 import { useBalanceManager } from "@/contexts/balance-manager";
-import { useManagerBalance } from "@/hooks/account/useBalances";
-import { useOpenOrders } from "@/hooks/account/useOpenOrders";
+import { useOrderHistory, type Order } from "@/hooks/account/useOrderHistory";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -21,39 +21,65 @@ export const OpenOrders = () => {
     Set<string>
   >(new Set());
   const { pool } = useCurrentPool();
-  const dbClient = useDeepBook();
+  const getDbClient = useDeepBookAccessor();
   const signAndExecuteTransaction = useSignAndExecuteTransaction();
-  const { balanceManagerKey } = useBalanceManager();
-  const { refetch: refetchManagerBaseBalance } = useManagerBalance(
-    balanceManagerKey(),
-    pool().base_asset_symbol
+  const queryClient = useQueryClient();
+  const { balanceManagerAddress } = useBalanceManager();
+  const orderHistoryQuery = useOrderHistory(
+    () => pool().pool_name,
+    () => balanceManagerAddress() ?? ""
   );
-  const { refetch: refetchManagerQuoteBalance } = useManagerBalance(
-    balanceManagerKey(),
-    pool().quote_asset_symbol
-  );
-  const orders = useOpenOrders(pool().pool_name, balanceManagerKey());
+
+  const openOrders = createMemo(() => {
+    const allOrders =
+      orderHistoryQuery.data?.pages.flatMap((page) => page) || [];
+    const orderMap = new Map<string, Order>();
+
+    for (const order of allOrders) {
+      const existing = orderMap.get(order.order_id);
+      if (!existing || order.timestamp > existing.timestamp) {
+        orderMap.set(order.order_id, order);
+      }
+    }
+
+    return Array.from(orderMap.values())
+      .filter(
+        (order) => order.status === "Placed" || order.status === "Modified"
+      )
+      .filter((order) => order.remaining_quantity > 0)
+      .sort((a, b) => b.timestamp - a.timestamp);
+  });
 
   const handleCancelOrder = async (orderId: string) => {
     setLoadingCancelOrders((prev) => new Set([...prev, orderId]));
 
     const tx = new Transaction();
-    dbClient.deepBook.cancelOrder(
+    getDbClient().deepBook.cancelOrder(
       pool().pool_name,
-      balanceManagerKey(),
+      "MANAGER",
       orderId
     )(tx);
 
     try {
       await signAndExecuteTransaction({ transaction: tx });
 
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      orders.refetch();
-      refetchManagerBaseBalance();
-      refetchManagerQuoteBalance();
+      queryClient.invalidateQueries({ queryKey: ["orderUpdates"] });
+      queryClient.invalidateQueries({ queryKey: ["managerBalance"] });
+
       console.log("Canceled order:", orderId);
     } catch (error) {
       console.error("Failed to cancel order:", error);
+
+      const errorStr = String(error);
+      const isOrderNotFound =
+        errorStr.includes("big_vector") ||
+        errorStr.includes("leaf_remove") ||
+        errorStr.includes("MoveAbort");
+
+      if (isOrderNotFound) {
+        queryClient.invalidateQueries({ queryKey: ["orderUpdates"] });
+        queryClient.invalidateQueries({ queryKey: ["managerBalance"] });
+      }
     } finally {
       setLoadingCancelOrders((prev) => {
         const next = new Set(prev);
@@ -64,9 +90,9 @@ export const OpenOrders = () => {
   };
 
   return (
-    <div class="relative h-full overflow-y-auto">
+    <div class="relative h-full">
       <Show
-        when={orders.data && orders.data.length > 0}
+        when={openOrders().length > 0}
         fallback={
           <div class="text-muted-foreground absolute inset-0 flex flex-col items-center justify-center gap-2 text-xs">
             <svg
@@ -89,41 +115,51 @@ export const OpenOrders = () => {
         <Table>
           <TableHeader class="bg-background text-muted-foreground sticky top-0 text-xs [&_tr]:border-none">
             <TableRow>
-              <TableHead class="pl-4">EXPIRATION</TableHead>
-              <TableHead>QUANTITY</TableHead>
+              <TableHead class="pl-4">TIME PLACED</TableHead>
+              <TableHead>TYPE</TableHead>
+              <TableHead>PRICE ({pool().quote_asset_symbol})</TableHead>
+              <TableHead>QUANTITY ({pool().base_asset_symbol})</TableHead>
+              <TableHead>TOTAL ({pool().quote_asset_symbol})</TableHead>
               <TableHead>ID</TableHead>
               <TableHead class="pr-4 text-right" />
             </TableRow>
           </TableHeader>
           <TableBody class="text-xs [&_tr]:border-none">
-            <For each={orders.data}>
+            <For each={openOrders()}>
               {(order) => (
-                <Show when={order}>
-                  <TableRow>
-                    <TableCell class="text-muted-foreground pl-4">
-                      {new Date(
-                        Number(order!.expire_timestamp) / 1000000
-                      ).toLocaleString()}
-                    </TableCell>
-                    <TableCell>{`${order!.filled_quantity} / ${order!.quantity}`}</TableCell>
-                    <TableCell class="font-mono">
-                      {order!.order_id.slice(0, 8)}...
-                    </TableCell>
-                    <TableCell class="pr-4 text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        class="text-xs"
-                        disabled={loadingCancelOrders().has(order!.order_id)}
-                        onClick={() => handleCancelOrder(order!.order_id)}
-                      >
-                        {loadingCancelOrders().has(order!.order_id)
-                          ? "Canceling..."
-                          : "Cancel"}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                </Show>
+                <TableRow>
+                  <TableCell class="text-muted-foreground pl-4">
+                    {new Date(order.timestamp).toLocaleString()}
+                  </TableCell>
+                  <TableCell
+                    class={
+                      order.type === "buy" ? "text-[#26a69a]" : "text-[#ef5350]"
+                    }
+                  >
+                    {order.type.toUpperCase()}
+                  </TableCell>
+                  <TableCell>{order.price}</TableCell>
+                  <TableCell>{`${order.filled_quantity} / ${order.original_quantity}`}</TableCell>
+                  <TableCell>
+                    {(order.original_quantity * order.price).toFixed(4)}
+                  </TableCell>
+                  <TableCell class="font-mono">
+                    {order.order_id.slice(0, 8)}...
+                  </TableCell>
+                  <TableCell class="pr-4 text-right">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      class="text-xs"
+                      disabled={loadingCancelOrders().has(order.order_id)}
+                      onClick={() => handleCancelOrder(order.order_id)}
+                    >
+                      {loadingCancelOrders().has(order.order_id)
+                        ? "Canceling..."
+                        : "Cancel"}
+                    </Button>
+                  </TableCell>
+                </TableRow>
               )}
             </For>
           </TableBody>

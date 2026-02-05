@@ -15,13 +15,13 @@ export const UserTradeHistory = () => {
   const { pool } = useCurrentPool();
   const { balanceManagerAddress } = useBalanceManager();
   const makerOrders = useTradeHistory(
-    pool().pool_name,
-    balanceManagerAddress()
+    () => pool().pool_name,
+    () => balanceManagerAddress()
   );
   const takerOrders = useTradeHistory(
-    pool().pool_name,
+    () => pool().pool_name,
     undefined,
-    balanceManagerAddress()
+    () => balanceManagerAddress()
   );
 
   const sortedOrders = createMemo(() => {
@@ -33,7 +33,7 @@ export const UserTradeHistory = () => {
   });
 
   return (
-    <div class="relative h-full overflow-y-auto">
+    <div class="relative h-full">
       <Show
         when={sortedOrders().length > 0}
         fallback={

@@ -7,10 +7,28 @@ import {
 } from "solid-js";
 import { useNavigate, useParams } from "@solidjs/router";
 import { Nav } from "@/components/header/nav";
-import { PairTable, useSelectedPair } from "@/components/header/pair-table";
+import {
+  PairTable,
+  PairTableTrigger,
+  useSelectedPair,
+} from "@/components/header/pair-table";
+import { ConnectButton } from "@/components/header/connect-button";
+import { Settings } from "@/components/header/settings";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { PoolProvider } from "@/contexts/pool";
 import { usePools } from "@/hooks/market/usePools";
+
+const NavShell = () => (
+  <div class="flex w-full items-center justify-between border-b p-4">
+    <div class="flex items-center gap-4 md:gap-8">
+      <PairTableTrigger />
+    </div>
+    <div class="flex items-center gap-4">
+      <Settings />
+      <ConnectButton connectText="Connect" />
+    </div>
+  </div>
+);
 
 const DEFAULT_POOL_ID =
   "0xf948981b806057580f91622417534f491da5f61aeaf33d0ed8e69fd5691c95ce";
@@ -51,7 +69,8 @@ export default function AppLayout(props: ParentProps) {
 
     const pool = pools.find((p) => p.pool_id === poolId);
     if (!pool) {
-      navigate(`/trade/${DEFAULT_POOL_ID}`, { replace: true });
+      const firstPool = pools[0];
+      navigate(`/trade/${firstPool.pool_id}`, { replace: true });
     }
   });
 
@@ -72,39 +91,45 @@ export default function AppLayout(props: ParentProps) {
     }
   });
 
+  const isLoading = () => poolsQuery.isLoading || !selectedPool();
+
   return (
     <SidebarProvider>
-      <Show
-        when={!poolsQuery.isLoading}
-        fallback={
-          <div class="flex h-screen w-full items-center justify-center">
-            <p class="text-muted-foreground">Loading...</p>
-          </div>
-        }
-      >
-        <Show
-          when={selectedPool()}
-          fallback={
-            <div class="flex h-screen w-full items-center justify-center">
-              <p class="text-muted-foreground">Pool not found</p>
-            </div>
-          }
-        >
-          {(pool) => (
-            <PoolProvider pool={pool()}>
-              <div class="flex h-screen w-full">
-                <PairTable />
-                <div class="flex flex-1 flex-col overflow-hidden">
-                  <Nav />
-                  <main class="flex-1 overflow-auto">
-                    <Suspense>{props.children}</Suspense>
-                  </main>
+      <div class="flex h-screen w-full">
+        <PairTable />
+        <div class="flex flex-1 flex-col overflow-hidden">
+          <Show
+            when={!isLoading()}
+            fallback={
+              <>
+                <NavShell />
+                <div class="flex flex-1 items-center justify-center">
+                  <div class="border-primary h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
                 </div>
-              </div>
-            </PoolProvider>
-          )}
-        </Show>
-      </Show>
+              </>
+            }
+          >
+            <Show when={selectedPool()}>
+              {(pool) => (
+                <PoolProvider pool={pool()}>
+                  <Nav />
+                  <main class="min-h-0 flex-1 overflow-hidden">
+                    <Suspense
+                      fallback={
+                        <div class="flex h-full w-full items-center justify-center">
+                          <div class="border-primary h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
+                        </div>
+                      }
+                    >
+                      {props.children}
+                    </Suspense>
+                  </main>
+                </PoolProvider>
+              )}
+            </Show>
+          </Show>
+        </div>
+      </div>
     </SidebarProvider>
   );
 }

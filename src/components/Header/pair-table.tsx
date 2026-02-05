@@ -1,6 +1,6 @@
 import { createSignal, createMemo, For, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
-import { Search, Loader2 } from "lucide-solid";
+import { Search, Loader } from "lucide-solid";
 import {
   Sidebar,
   SidebarContent,
@@ -10,6 +10,7 @@ import {
 import { TextField, TextFieldInput } from "@/components/ui/text-field";
 import { usePools, type Pool } from "@/hooks/market/usePools";
 import { useSummary, type Pair } from "@/hooks/market/useSummary";
+import { formatVolume, formatPrice } from "@/lib/utils";
 
 import suiImg from "@/assets/sui.png";
 import usdcImg from "@/assets/usdc.png";
@@ -29,10 +30,7 @@ const COIN_IMAGES: Record<string, string> = {
 
 const getCoinImage = (currency: string): string | null => {
   const normalized = currency.toUpperCase();
-  for (const [key, img] of Object.entries(COIN_IMAGES)) {
-    if (normalized.includes(key)) return img;
-  }
-  return null;
+  return COIN_IMAGES[normalized] || null;
 };
 
 type CoinIconProps = {
@@ -76,24 +74,6 @@ export type PairData = {
   lastPrice: number;
   priceChange24h: number;
   quoteVolume: number;
-};
-
-const formatVolume = (volume: number): string => {
-  const formatter = new Intl.NumberFormat("en-US", {
-    notation: "compact",
-    compactDisplay: "short",
-    maximumFractionDigits: 2,
-  });
-  return formatter.format(volume);
-};
-
-const formatPrice = (price: number, quoteCurrency: string): string => {
-  const isUsd = quoteCurrency.toUpperCase().includes("USD");
-  const formatted = price.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: price < 1 ? 6 : 4,
-  });
-  return isUsd ? `$${formatted}` : `${formatted} ${quoteCurrency}`;
 };
 
 const mergePairData = (
@@ -225,7 +205,7 @@ const PairTableContent = () => {
       <div class="mt-4 flex-1 divide-y overflow-y-auto">
         <Show when={isLoading()}>
           <div class="flex items-center justify-center py-8">
-            <Loader2 class="text-muted-foreground size-6 animate-spin" />
+            <Loader class="text-muted-foreground size-6 animate-spin" />
           </div>
         </Show>
 

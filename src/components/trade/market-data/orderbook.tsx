@@ -1,4 +1,12 @@
-import { createSignal, createMemo, For, Show, onMount } from "solid-js";
+import {
+  createSignal,
+  createMemo,
+  For,
+  Show,
+  onMount,
+  onCleanup,
+  createEffect,
+} from "solid-js";
 import { useColorMode } from "@kobalte/core";
 import { useCurrentPool } from "@/contexts/pool";
 import { useOrderbook, type OrderbookEntry } from "@/hooks/market/useOrderbook";
@@ -7,6 +15,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+
+const initialScrollDone = new Set<string>();
+const scrollPositions = new Map<string, number>();
 
 type OrderbookEntriesProps = {
   entries: OrderbookEntry[];
@@ -108,31 +119,85 @@ export const OrderBook = () => {
   const orderbookQuery = useOrderbook();
   let spreadRowRef: HTMLTableRowElement | undefined;
   let tableContainerRef: HTMLDivElement | undefined;
+  let hasInitializedScroll = false;
+  let scrollHandler: ((e: Event) => void) | null = null;
+  let lastSavedScroll = 0;
 
-  const scrollToSpread = () => {
-    if (!spreadRowRef || !tableContainerRef) return;
-
-    const container = tableContainerRef;
-    const spreadRow = spreadRowRef;
-    const containerHeight = container.clientHeight;
-    const spreadRowTop = spreadRow.offsetTop;
-    const spreadRowHeight = spreadRow.clientHeight;
-
-    const scrollPosition =
-      spreadRowTop - containerHeight / 2 + spreadRowHeight / 2;
-
-    container.scrollTop = scrollPosition;
-  };
+  const currentPoolId = pool().pool_id;
 
   onMount(() => {
-    const checkAndScroll = () => {
-      if (orderbookQuery.data && spreadRowRef && tableContainerRef) {
-        scrollToSpread();
-      } else {
-        requestAnimationFrame(checkAndScroll);
+    const poolId = currentPoolId;
+    const container = tableContainerRef;
+
+    if (!container) return;
+
+    scrollHandler = () => {
+      if (container) {
+        lastSavedScroll = container.scrollTop;
+        scrollPositions.set(poolId, lastSavedScroll);
       }
     };
-    requestAnimationFrame(checkAndScroll);
+
+    container.addEventListener("scroll", scrollHandler);
+
+    const savedScrollPosition = scrollPositions.get(poolId);
+    if (savedScrollPosition !== undefined && savedScrollPosition > 0) {
+      container.scrollTop = savedScrollPosition;
+      lastSavedScroll = savedScrollPosition;
+      hasInitializedScroll = true;
+    } else if (!initialScrollDone.has(poolId)) {
+      const attemptScroll = () => {
+        if (!orderbookQuery.data || !spreadRowRef || !tableContainerRef) {
+          setTimeout(attemptScroll, 50);
+          return;
+        }
+
+        const spreadRow = spreadRowRef;
+        const containerHeight = container.clientHeight;
+        const spreadRowTop = spreadRow.offsetTop;
+        const spreadRowHeight = spreadRow.clientHeight;
+
+        const scrollPosition =
+          spreadRowTop - containerHeight / 2 + spreadRowHeight / 2;
+
+        container.scrollTop = scrollPosition;
+        lastSavedScroll = scrollPosition;
+        initialScrollDone.add(poolId);
+        hasInitializedScroll = true;
+      };
+
+      attemptScroll();
+    } else {
+      hasInitializedScroll = true;
+    }
+  });
+
+  createEffect(() => {
+    const container = tableContainerRef;
+    const data = orderbookQuery.data;
+
+    if (!container || !data || !hasInitializedScroll) return;
+
+    const savedScroll = scrollPositions.get(currentPoolId);
+    if (savedScroll !== undefined && savedScroll > 0) {
+      const currentScroll = container.scrollTop;
+      if (Math.abs(currentScroll - savedScroll) > 10) {
+        requestAnimationFrame(() => {
+          if (container) {
+            container.scrollTop = savedScroll;
+          }
+        });
+      }
+    }
+  });
+
+  onCleanup(() => {
+    const poolId = currentPoolId;
+    const container = tableContainerRef;
+    if (container && scrollHandler) {
+      container.removeEventListener("scroll", scrollHandler);
+      scrollPositions.set(poolId, container.scrollTop);
+    }
   });
 
   return (

@@ -1,10 +1,17 @@
-const BASE_URL = "https://deepbook-indexer.mainnet.mystenlabs.com";
+const INDEXER_URLS = {
+  mainnet: "https://deepbook-indexer.mainnet.mystenlabs.com",
+  testnet: "https://deepbook-indexer.testnet.mystenlabs.com",
+};
+
+export type Network = "mainnet" | "testnet";
 
 export default async function dbIndexerClient(
   endpoint: string,
+  network: Network = "mainnet",
   options: RequestInit = {}
 ) {
-  const url = `${BASE_URL}${endpoint}`;
+  const baseUrl = INDEXER_URLS[network];
+  const url = `${baseUrl}${endpoint}`;
 
   const response = await fetch(url, {
     ...options,

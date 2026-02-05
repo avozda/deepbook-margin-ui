@@ -200,6 +200,43 @@ This pattern keeps dialog logic encapsulated and makes components easier to use:
 
 5. **Cleanup with `onCleanup`** for event listeners
 
+6. **TanStack Query Reactivity** - Never destructure query results directly. Keep the query object and access properties inside reactive contexts (`createMemo`, `createEffect`, or JSX):
+
+   ```typescript
+   // WRONG - loses reactivity, values read once at destructure time
+   const { data, isLoading } = useMyQuery();
+   const value = data?.someField ?? 0; // NOT reactive
+
+   // CORRECT - stays reactive
+   const myQuery = useMyQuery();
+   const value = createMemo(() => myQuery.data?.someField ?? 0);
+
+   // In JSX, access directly
+   <Show when={myQuery.isLoading}>Loading...</Show>
+   <div>{myQuery.data?.someField}</div>
+   ```
+
+   This applies to all `@tanstack/solid-query` hooks (`useQuery`, `useMutation`, etc.). The returned object has reactive getters that must be accessed within a tracking scope.
+
+7. **Returning reactive values from hooks** - When creating custom hooks that derive values from queries or signals, return getters (functions) instead of computed values:
+
+   ```typescript
+   // WRONG - computed once, not reactive
+   export function useMyHook() {
+     const query = useQuery(...);
+     const derivedValue = query.data?.value ?? 0;
+     return { derivedValue, isLoading: query.isLoading };
+   }
+
+   // CORRECT - returns reactive getters
+   export function useMyHook() {
+     const query = useQuery(...);
+     const derivedValue = () => query.data?.value ?? 0;
+     const isLoading = () => query.isLoading;
+     return { derivedValue, isLoading };
+   }
+   ```
+
 ### Styling
 
 1. **Use `class` attribute** (not `className`):
@@ -268,6 +305,16 @@ When creating new UI components with Kobalte:
 3. Use `data-slot` attribute for component parts
 
 4. Export both component and variants for flexibility
+
+## Utility Functions
+
+All formatting and helper functions should be placed in `src/lib/utils.ts`:
+
+- `truncateAddress` - truncates wallet addresses for display
+- `formatVolume` - formats numbers with compact notation (e.g., 1.2M)
+- `formatPrice` - formats prices with currency symbol
+
+When creating new formatting functions, add them to `utils.ts` rather than defining them in components.
 
 ## Key Dependencies
 

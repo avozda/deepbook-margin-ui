@@ -1,3 +1,4 @@
+import { useCurrentNetwork } from "@/contexts/dapp-kit";
 import dbIndexerClient from "@/lib/indexer-client";
 import { useQuery, UseQueryResult } from "@tanstack/solid-query";
 
@@ -16,9 +17,11 @@ export type Pair = {
 };
 
 export function useSummary(): UseQueryResult<Pair[], Error> {
+  const network = useCurrentNetwork();
+
   return useQuery(() => ({
-    queryKey: ["summary"],
-    queryFn: async () => await dbIndexerClient("/summary"),
+    queryKey: ["summary", network()],
+    queryFn: async () => await dbIndexerClient("/summary", network()),
     refetchInterval: 1000,
   }));
 }

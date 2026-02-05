@@ -1,13 +1,13 @@
-import { createSignal, createEffect, For } from "solid-js";
+import { createSignal, createEffect, Show, Suspense } from "solid-js";
 import { Transaction } from "@mysten/sui/transactions";
+import { useQueryClient } from "@tanstack/solid-query";
 import { useCurrentPool } from "@/contexts/pool";
-import { useDeepBook } from "@/contexts/deepbook";
+import { useDeepBookAccessor } from "@/contexts/deepbook";
 import {
   useCurrentAccount,
   useCurrentNetwork,
   useSignAndExecuteTransaction,
 } from "@/contexts/dapp-kit";
-import { useBalanceManager } from "@/contexts/balance-manager";
 import { useBalance, useManagerBalance } from "@/hooks/account/useBalances";
 import { mainnetCoins, testnetCoins, type Coin } from "@/constants/deepbook";
 import {
@@ -15,21 +15,39 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsContent, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Tabs,
+  TabsList,
+  TabsContent,
+  TabsTrigger,
+  TabsIndicator,
+} from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { TextField, TextFieldInput } from "@/components/ui/text-field";
+import {
+  NumberField,
+  NumberFieldGroup,
+  NumberFieldInput,
+  NumberFieldDecrementTrigger,
+  NumberFieldIncrementTrigger,
+} from "@/components/ui/number-field";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type TransferType = "deposit" | "withdraw";
 
 export const BalanceManager = () => {
   const { pool } = useCurrentPool();
-  const dbClient = useDeepBook();
+  const getDbClient = useDeepBookAccessor();
   const network = useCurrentNetwork();
   const account = useCurrentAccount();
   const signAndExecuteTransaction = useSignAndExecuteTransaction();
-  const { balanceManagerKey } = useBalanceManager();
+  const queryClient = useQueryClient();
 
   const coins = () => (network() === "mainnet" ? mainnetCoins : testnetCoins);
 
@@ -43,24 +61,36 @@ export const BalanceManager = () => {
 
   const selectedCoin = (): Coin | undefined => coins()[selectedAsset()];
 
-  const { data: walletBalance } = useBalance(
+  const walletBalanceQuery = useBalance(
     () => selectedCoin()?.type ?? "",
     () => selectedCoin()?.scalar ?? 1
   );
-  const { data: managerBalance, refetch: refetchManagerBalance } =
-    useManagerBalance(balanceManagerKey, selectedAsset);
+  const managerBalanceQuery = useManagerBalance(selectedAsset);
+
+  createEffect(() => {
+    const currentPool = pool();
+    setSelectedAsset(currentPool.quote_asset_symbol);
+  });
 
   createEffect(() => {
     if (isOpen()) {
-      setSelectedAsset(pool().quote_asset_symbol);
+      walletBalanceQuery.refetch();
+      managerBalanceQuery.refetch();
     }
   });
+
+  const refetchAllBalances = () => {
+    queryClient.invalidateQueries({ queryKey: ["walletBalances"] });
+    queryClient.invalidateQueries({ queryKey: ["walletBalance"] });
+    queryClient.invalidateQueries({ queryKey: ["managerBalance"] });
+  };
 
   const handleDeposit = async () => {
     setIsSubmitting(true);
     const tx = new Transaction();
-    dbClient.balanceManager.depositIntoManager(
-      balanceManagerKey(),
+
+    getDbClient().balanceManager.depositIntoManager(
+      "MANAGER",
       selectedAsset(),
       amount()
     )(tx);
@@ -70,9 +100,8 @@ export const BalanceManager = () => {
         transaction: tx,
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      refetchManagerBalance();
       console.log(`Deposited ${amount()} ${selectedAsset()}:`, result);
+      refetchAllBalances();
     } catch (error) {
       console.error("Error depositing:", error);
     } finally {
@@ -86,8 +115,8 @@ export const BalanceManager = () => {
 
     setIsSubmitting(true);
     const tx = new Transaction();
-    dbClient.balanceManager.withdrawFromManager(
-      balanceManagerKey(),
+    getDbClient().balanceManager.withdrawFromManager(
+      "MANAGER",
       selectedAsset(),
       amount(),
       addr
@@ -98,9 +127,8 @@ export const BalanceManager = () => {
         transaction: tx,
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      refetchManagerBalance();
       console.log(`Withdrew ${amount()} ${selectedAsset()}:`, result);
+      refetchAllBalances();
     } catch (error) {
       console.error("Error withdrawing:", error);
     } finally {
@@ -121,38 +149,42 @@ export const BalanceManager = () => {
     const amt = amount();
     if (amt <= 0) return false;
     if (transferType() === "deposit") {
-      return walletBalance !== undefined && amt <= (walletBalance ?? 0);
+      return (
+        walletBalanceQuery.data !== undefined &&
+        amt <= (walletBalanceQuery.data ?? 0)
+      );
     } else {
       return (
-        managerBalance !== undefined && amt <= (managerBalance?.balance ?? 0)
+        managerBalanceQuery.data !== undefined &&
+        amt <= (managerBalanceQuery.data?.balance ?? 0)
       );
     }
   };
 
   return (
     <Dialog open={isOpen()} onOpenChange={setIsOpen}>
-      <DialogTrigger
-        as={Button}
+      <Button
         class="mt-3 grow"
         variant="outline"
         onClick={() => {
           setSelectedAsset(pool().quote_asset_symbol);
           setTransferType("deposit");
+          setIsOpen(true);
         }}
       >
         Deposit
-      </DialogTrigger>
-      <DialogTrigger
-        as={Button}
+      </Button>
+      <Button
         class="mt-3 grow"
         variant="outline"
         onClick={() => {
           setSelectedAsset(pool().base_asset_symbol);
           setTransferType("withdraw");
+          setIsOpen(true);
         }}
       >
         Withdraw
-      </DialogTrigger>
+      </Button>
       <DialogContent class="w-screen max-w-md">
         <DialogHeader>
           <DialogTitle>Manage Balance</DialogTitle>
@@ -163,52 +195,196 @@ export const BalanceManager = () => {
           onChange={(value) => setTransferType(value as TransferType)}
         >
           <TabsList class="grid w-full grid-cols-2">
+            <TabsIndicator />
             <TabsTrigger value="deposit">Deposit</TabsTrigger>
             <TabsTrigger value="withdraw">Withdraw</TabsTrigger>
           </TabsList>
-          <TabsContent value={transferType()}>
-            <form class="mt-4" onSubmit={handleSubmit}>
-              <p class="text-sm">
-                Wallet Balance: {walletBalance ?? 0} {selectedAsset()}
-              </p>
-              <p class="text-sm">
-                Manager Balance: {managerBalance?.balance ?? 0}{" "}
-                {selectedAsset()}
-              </p>
-              <div class="relative my-4">
-                <TextField>
-                  <TextFieldInput
-                    class="[appearance:textfield] rounded-sm py-6 pr-24 text-left text-2xl shadow-none hover:border-gray-300 focus:ring-0 focus:outline-2 focus:-outline-offset-1 focus:outline-gray-400 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                    type="number"
-                    step="any"
-                    value={amount()}
-                    onInput={(e) =>
-                      setAmount(parseFloat(e.currentTarget.value) || 0)
+          <TabsContent value="deposit">
+            <form class="mt-4 space-y-4" onSubmit={handleSubmit}>
+              <div class="space-y-2">
+                <label class="text-sm font-medium">Asset</label>
+                <Select
+                  options={Object.keys(coins())}
+                  optionValue={(item) => item}
+                  optionTextValue={(item) => item}
+                  value={selectedAsset()}
+                  onChange={(value) => value && setSelectedAsset(value)}
+                  itemComponent={(props) => (
+                    <SelectItem item={props.item}>
+                      {props.item.rawValue}
+                    </SelectItem>
+                  )}
+                >
+                  <SelectTrigger class="w-full">
+                    <SelectValue<string>>
+                      {(state) => state.selectedOption()}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent />
+                </Select>
+              </div>
+              <div class="space-y-2">
+                <label class="text-sm font-medium">Amount</label>
+                <NumberField
+                  rawValue={amount()}
+                  onRawValueChange={(value) => setAmount(value || 0)}
+                  minValue={0}
+                  formatOptions={{ maximumFractionDigits: 20 }}
+                >
+                  <NumberFieldGroup>
+                    <NumberFieldDecrementTrigger />
+                    <NumberFieldInput
+                      class="py-6 text-2xl shadow-none"
+                      placeholder="0.00"
+                    />
+                    <NumberFieldIncrementTrigger />
+                  </NumberFieldGroup>
+                </NumberField>
+              </div>
+              <div class="bg-muted/50 space-y-1 rounded-md p-3">
+                <div class="flex justify-between text-sm">
+                  <span class="text-muted-foreground">Wallet Balance</span>
+                  <Suspense
+                    fallback={
+                      <div class="bg-muted h-4 w-16 animate-pulse rounded" />
                     }
-                  />
-                </TextField>
-                <div class="absolute top-1/2 right-2 -translate-y-1/2">
-                  <select
-                    class="bg-background border-input h-10 rounded-md border px-3 py-2 text-sm"
-                    value={selectedAsset()}
-                    onChange={(e) => setSelectedAsset(e.currentTarget.value)}
                   >
-                    <For each={Object.keys(coins())}>
-                      {(symbol) => <option value={symbol}>{symbol}</option>}
-                    </For>
-                  </select>
+                    <Show
+                      when={!walletBalanceQuery.isLoading}
+                      fallback={
+                        <div class="bg-muted h-4 w-16 animate-pulse rounded" />
+                      }
+                    >
+                      <span>
+                        {walletBalanceQuery.data ?? 0} {selectedAsset()}
+                      </span>
+                    </Show>
+                  </Suspense>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-muted-foreground">Manager Balance</span>
+                  <Suspense
+                    fallback={
+                      <div class="bg-muted h-4 w-16 animate-pulse rounded" />
+                    }
+                  >
+                    <Show
+                      when={!managerBalanceQuery.isLoading}
+                      fallback={
+                        <div class="bg-muted h-4 w-16 animate-pulse rounded" />
+                      }
+                    >
+                      <span>
+                        {managerBalanceQuery.data?.balance ?? 0}{" "}
+                        {selectedAsset()}
+                      </span>
+                    </Show>
+                  </Suspense>
                 </div>
               </div>
-              <div class="flex w-full justify-end">
-                <Button
-                  type="submit"
-                  disabled={!isValidAmount() || isSubmitting()}
+              <Button
+                type="submit"
+                class="w-full"
+                disabled={!isValidAmount() || isSubmitting()}
+              >
+                {isSubmitting()
+                  ? "Depositing..."
+                  : `Deposit ${selectedAsset()}`}
+              </Button>
+            </form>
+          </TabsContent>
+          <TabsContent value="withdraw">
+            <form class="mt-4 space-y-4" onSubmit={handleSubmit}>
+              <div class="space-y-2">
+                <label class="text-sm font-medium">Asset</label>
+                <Select
+                  options={Object.keys(coins())}
+                  optionValue={(item) => item}
+                  optionTextValue={(item) => item}
+                  value={selectedAsset()}
+                  onChange={(value) => value && setSelectedAsset(value)}
+                  itemComponent={(props) => (
+                    <SelectItem item={props.item}>
+                      {props.item.rawValue}
+                    </SelectItem>
+                  )}
                 >
-                  {isSubmitting()
-                    ? "Submitting..."
-                    : `${transferType() === "deposit" ? "Deposit" : "Withdraw"} ${selectedAsset()}`}
-                </Button>
+                  <SelectTrigger class="w-full">
+                    <SelectValue<string>>
+                      {(state) => state.selectedOption()}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent />
+                </Select>
               </div>
+              <div class="space-y-2">
+                <label class="text-sm font-medium">Amount</label>
+                <NumberField
+                  rawValue={amount()}
+                  onRawValueChange={(value) => setAmount(value || 0)}
+                  minValue={0}
+                  formatOptions={{ maximumFractionDigits: 20 }}
+                >
+                  <NumberFieldGroup>
+                    <NumberFieldDecrementTrigger />
+                    <NumberFieldInput
+                      class="py-6 text-2xl shadow-none"
+                      placeholder="0.00"
+                    />
+                    <NumberFieldIncrementTrigger />
+                  </NumberFieldGroup>
+                </NumberField>
+              </div>
+              <div class="bg-muted/50 space-y-1 rounded-md p-3">
+                <div class="flex justify-between text-sm">
+                  <span class="text-muted-foreground">Manager Balance</span>
+                  <Suspense
+                    fallback={
+                      <div class="bg-muted h-4 w-16 animate-pulse rounded" />
+                    }
+                  >
+                    <Show
+                      when={!managerBalanceQuery.isLoading}
+                      fallback={
+                        <div class="bg-muted h-4 w-16 animate-pulse rounded" />
+                      }
+                    >
+                      <span>
+                        {managerBalanceQuery.data?.balance ?? 0}{" "}
+                        {selectedAsset()}
+                      </span>
+                    </Show>
+                  </Suspense>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-muted-foreground">Wallet Balance</span>
+                  <Suspense
+                    fallback={
+                      <div class="bg-muted h-4 w-16 animate-pulse rounded" />
+                    }
+                  >
+                    <Show
+                      when={!walletBalanceQuery.isLoading}
+                      fallback={
+                        <div class="bg-muted h-4 w-16 animate-pulse rounded" />
+                      }
+                    >
+                      <span>
+                        {walletBalanceQuery.data ?? 0} {selectedAsset()}
+                      </span>
+                    </Show>
+                  </Suspense>
+                </div>
+              </div>
+              <Button
+                type="submit"
+                class="w-full"
+                disabled={!isValidAmount() || isSubmitting()}
+              >
+                {isSubmitting()
+                  ? "Withdrawing..."
+                  : `Withdraw ${selectedAsset()}`}
+              </Button>
             </form>
           </TabsContent>
         </Tabs>

@@ -1,10 +1,10 @@
 import { createSignal } from "solid-js";
 import { Transaction } from "@mysten/sui/transactions";
 import { useCurrentPool } from "@/contexts/pool";
-import { useDeepBook } from "@/contexts/deepbook";
+import { useDeepBookAccessor } from "@/contexts/deepbook";
 import { useSignAndExecuteTransaction } from "@/contexts/dapp-kit";
-import { useBalanceManager } from "@/contexts/balance-manager";
 import { useDeepBookAccount } from "@/hooks/account/useDeepBookAccount";
+import { useManagerBalance } from "@/hooks/account/useBalances";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -17,24 +17,34 @@ import {
 
 export const SettledBalance = () => {
   const { pool } = useCurrentPool();
-  const dbClient = useDeepBook();
+  const getDbClient = useDeepBookAccessor();
   const signAndExecuteTransaction = useSignAndExecuteTransaction();
-  const { balanceManagerKey } = useBalanceManager();
-  const account = useDeepBookAccount(pool().pool_name, balanceManagerKey());
+  const account = useDeepBookAccount(pool().pool_name);
+  const managerBaseBalanceQuery = useManagerBalance(
+    () => pool().base_asset_symbol
+  );
+  const managerQuoteBalanceQuery = useManagerBalance(
+    () => pool().quote_asset_symbol
+  );
   const [isLoading, setIsLoading] = createSignal(false);
 
   const handleClaimSettledFunds = async () => {
     setIsLoading(true);
 
     const tx = new Transaction();
-    dbClient.deepBook.withdrawSettledAmounts(
+    getDbClient().deepBook.withdrawSettledAmounts(
       pool().pool_name,
-      balanceManagerKey()
+      "MANAGER"
     )(tx);
 
     try {
       await signAndExecuteTransaction({ transaction: tx });
       console.log("Withdrew settled balances");
+
+      managerBaseBalanceQuery.refetch();
+      managerQuoteBalanceQuery.refetch();
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       account.refetch();
     } catch (error) {
       console.error("Failed to withdraw settled balances:", error);
@@ -50,7 +60,7 @@ export const SettledBalance = () => {
   };
 
   return (
-    <div class="relative h-full overflow-y-auto">
+    <div class="relative h-full">
       <Table>
         <TableHeader class="bg-background text-muted-foreground sticky top-0 text-xs [&_tr]:border-none">
           <TableRow>
