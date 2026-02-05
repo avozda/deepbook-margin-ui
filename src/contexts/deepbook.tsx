@@ -1,4 +1,4 @@
-import { createContext, useContext, createMemo, JSX } from "solid-js";
+import { createContext, useContext, createMemo, type JSX } from "solid-js";
 import { DeepBookClient } from "@mysten/deepbook-v3";
 import {
   useCurrentAccount,
@@ -6,6 +6,7 @@ import {
   useSuiClient,
 } from "@/contexts/dapp-kit";
 import { useBalanceManager } from "@/contexts/balance-manager";
+import { useMarginManager } from "@/contexts/margin-manager";
 import {
   mainnetCoins,
   testnetCoins,
@@ -20,11 +21,13 @@ export const DeepBookProvider = (props: { children: JSX.Element }) => {
   const network = useCurrentNetwork();
   const account = useCurrentAccount();
   const { balanceManagerAddress } = useBalanceManager();
+  const { getMarginManagers } = useMarginManager();
 
   const deepBookClient = createMemo(() => {
     const net = network();
     const addr = account()?.address ?? "";
     const bmAddress = balanceManagerAddress();
+    const marginManagers = getMarginManagers();
 
     return new DeepBookClient({
       client: client(),
@@ -38,6 +41,8 @@ export const DeepBookProvider = (props: { children: JSX.Element }) => {
             },
           }
         : {},
+      marginManagers:
+        Object.keys(marginManagers).length > 0 ? marginManagers : undefined,
       coins: net === "mainnet" ? mainnetCoins : testnetCoins,
       pools: net === "mainnet" ? mainnetPools : testnetPools,
     });
