@@ -1,22 +1,33 @@
-import { useCurrentAccount, useSuiClient } from "@/contexts/dapp-kit";
-import { useDeepBook } from "@/contexts/deepbook";
+import {
+  useCurrentAccount,
+  useCurrentNetwork,
+  useSuiClient,
+} from "@/contexts/dapp-kit";
 import { useCurrentPool } from "@/contexts/pool";
+import { useBalanceManager } from "@/contexts/balance-manager";
+import {
+  mainnetCoins,
+  testnetCoins,
+  type Coin,
+  type CoinMap,
+} from "@/constants/deepbook";
 
 import { normalizeStructTag } from "@mysten/sui/utils";
 import { useQuery } from "@tanstack/solid-query";
 
 export function useBalances() {
   const account = useCurrentAccount();
-  const dbClient = useSuiClient();
+  const network = useCurrentNetwork();
+  const suiClient = useSuiClient();
 
   return useQuery(() => ({
-    queryKey: ["walletBalances", account()?.address],
+    queryKey: ["walletBalances", network(), account()?.address],
     queryFn: async () => {
-      return await dbClient().getAllBalances({
+      return await suiClient().getAllBalances({
         owner: account()!.address,
       });
     },
-    enabled: !!dbClient && !!account,
+    enabled: !!account(),
   }));
 }
 
@@ -24,61 +35,142 @@ export function useBalance(
   assetType: string | (() => string),
   scalar: number | (() => number)
 ) {
-  const { data: balances } = useBalances();
+  const network = useCurrentNetwork();
+  const balancesQuery = useBalances();
+
   const getAssetType =
     typeof assetType === "function" ? assetType : () => assetType;
   const getScalar = typeof scalar === "function" ? scalar : () => scalar;
 
   return useQuery(() => ({
-    queryKey: ["walletBalance", getAssetType()],
+    queryKey: ["walletBalance", network(), getAssetType()],
     queryFn: () => {
-      const rawWalletBalance = balances!.find(
+      const balancesArray = [...balancesQuery.data!];
+
+      const rawWalletBalance = balancesArray.find(
         (coin: any) =>
           normalizeStructTag(coin.coinType) ===
           normalizeStructTag(getAssetType())
       )?.totalBalance;
+
       return rawWalletBalance !== undefined
         ? parseInt(rawWalletBalance) / getScalar()
         : 0;
     },
-    enabled: balances !== undefined,
+    enabled: balancesQuery.data !== undefined,
   }));
 }
 
-export function useManagerBalance(
-  managerKey: string | (() => string),
-  coinKey: string | (() => string)
-) {
-  const dbClient = useDeepBook();
-  const getManagerKey =
-    typeof managerKey === "function" ? managerKey : () => managerKey;
+type BalanceManagerBalance = {
+  coinType: string;
+  balance: number;
+};
+
+export function useManagerBalance(coinKey: string | (() => string)) {
+  const network = useCurrentNetwork();
+  const suiClient = useSuiClient();
+  const { balanceManagerAddress } = useBalanceManager();
   const getCoinKey = typeof coinKey === "function" ? coinKey : () => coinKey;
 
+  const coins = (): CoinMap =>
+    network() === "mainnet" ? mainnetCoins : testnetCoins;
+
   return useQuery(() => ({
-    queryKey: ["managerBalance", getManagerKey(), getCoinKey()],
-    queryFn: async () =>
-      await dbClient?.checkManagerBalance(getManagerKey(), getCoinKey()),
-    enabled: !!dbClient && getCoinKey().length > 0,
+    queryKey: [
+      "managerBalance",
+      network(),
+      getCoinKey(),
+      balanceManagerAddress(),
+    ],
+    queryFn: async (): Promise<BalanceManagerBalance> => {
+      const bmAddress = balanceManagerAddress();
+      const coinKeyValue = getCoinKey();
+
+      const coin: Coin | undefined = coins()[coinKeyValue];
+      if (!coin) {
+        return { coinType: "", balance: 0 };
+      }
+
+      const managerObject = await suiClient().getObject({
+        id: bmAddress!,
+        options: { showContent: true },
+      });
+
+      if (managerObject.data?.content?.dataType !== "moveObject") {
+        return { coinType: coin.type, balance: 0 };
+      }
+
+      const fields = managerObject.data.content.fields as any;
+      const bagId = fields?.balances?.fields?.id?.id;
+
+      if (!bagId) {
+        return { coinType: coin.type, balance: 0 };
+      }
+
+      const dynamicFields = await suiClient().getDynamicFields({
+        parentId: bagId,
+      });
+
+      const balanceField = dynamicFields.data.find((field: any) => {
+        const fieldType = field.name?.type;
+        if (fieldType && fieldType.includes("BalanceKey<")) {
+          const typeArg = fieldType.match(/BalanceKey<(.+)>/)?.[1];
+          if (typeArg) {
+            return (
+              normalizeStructTag(typeArg) === normalizeStructTag(coin.type)
+            );
+          }
+        }
+        return false;
+      });
+
+      if (!balanceField) {
+        return { coinType: coin.type, balance: 0 };
+      }
+
+      const fieldObject = await suiClient().getObject({
+        id: balanceField.objectId,
+        options: { showContent: true },
+      });
+
+      if (fieldObject.data?.content?.dataType === "moveObject") {
+        const fieldData = fieldObject.data.content.fields as any;
+        const rawBalance = fieldData?.value;
+        if (rawBalance) {
+          return {
+            coinType: coin.type,
+            balance: Number(rawBalance) / coin.scalar,
+          };
+        }
+      }
+
+      return { coinType: coin.type, balance: 0 };
+    },
+    enabled: getCoinKey().length > 0 && !!balanceManagerAddress(),
   }));
 }
 
 export function useBalancesFromCurrentPool() {
   const { pool } = useCurrentPool();
-  const { data: walletBalances } = useBalances();
+  const balancesQuery = useBalances();
 
   const getAssetBalance = (assetId: string) => {
+    const walletBalances = balancesQuery.data;
+    if (!walletBalances) return 0;
+    const balancesArray = [...walletBalances];
     return parseInt(
-      walletBalances?.find(
+      balancesArray.find(
         (coin: any) =>
           normalizeStructTag(coin.coinType) === normalizeStructTag(assetId)
       )?.totalBalance ?? "0"
     );
   };
 
-  const baseAssetBalance =
+  const baseAssetBalance = () =>
     getAssetBalance(pool().base_asset_id) / 10 ** pool().base_asset_decimals;
-  const quoteAssetBalance =
+  const quoteAssetBalance = () =>
     getAssetBalance(pool().quote_asset_id) / 10 ** pool().quote_asset_decimals;
+  const isLoading = () => balancesQuery.isLoading;
 
-  return { baseAssetBalance, quoteAssetBalance };
+  return { baseAssetBalance, quoteAssetBalance, isLoading };
 }

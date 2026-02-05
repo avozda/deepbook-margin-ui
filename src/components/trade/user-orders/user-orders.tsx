@@ -13,9 +13,12 @@ const TabLoading = () => (
 
 export const UserOrders = () => {
   return (
-    <div class="h-full min-w-fit">
-      <Tabs defaultValue="open-orders" class="flex h-full flex-col">
-        <TabsList class="bg-background w-full justify-start rounded-none px-4 py-6">
+    <div class="flex h-full min-w-fit flex-col overflow-hidden">
+      <Tabs
+        defaultValue="open-orders"
+        class="flex min-h-0 flex-1 flex-col gap-0"
+      >
+        <TabsList class="bg-background w-full shrink-0 justify-start rounded-none px-4 py-6">
           <TabsTrigger class="data-selected:shadow-none" value="open-orders">
             Open Orders
           </TabsTrigger>
@@ -32,22 +35,34 @@ export const UserOrders = () => {
             Settled Balance
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="open-orders" class="m-0 flex-1 overflow-hidden">
+        <TabsContent
+          value="open-orders"
+          class="m-0 min-h-0 flex-1 overflow-y-auto"
+        >
           <Suspense fallback={<TabLoading />}>
             <OpenOrders />
           </Suspense>
         </TabsContent>
-        <TabsContent value="order-history" class="m-0 flex-1 overflow-hidden">
+        <TabsContent
+          value="order-history"
+          class="m-0 min-h-0 flex-1 overflow-y-auto"
+        >
           <Suspense fallback={<TabLoading />}>
             <OrderHistory />
           </Suspense>
         </TabsContent>
-        <TabsContent value="trade-history" class="m-0 flex-1 overflow-hidden">
+        <TabsContent
+          value="trade-history"
+          class="m-0 min-h-0 flex-1 overflow-y-auto"
+        >
           <Suspense fallback={<TabLoading />}>
             <UserTradeHistory />
           </Suspense>
         </TabsContent>
-        <TabsContent value="settled-balance" class="m-0 flex-1 overflow-hidden">
+        <TabsContent
+          value="settled-balance"
+          class="m-0 min-h-0 flex-1 overflow-y-auto"
+        >
           <Suspense fallback={<TabLoading />}>
             <SettledBalance />
           </Suspense>

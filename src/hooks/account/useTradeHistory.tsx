@@ -1,3 +1,4 @@
+import { useCurrentNetwork } from "@/contexts/dapp-kit";
 import dbIndexerClient from "@/lib/indexer-client";
 import {
   useInfiniteQuery,
@@ -19,24 +20,41 @@ type Trade = {
 };
 
 export function useTradeHistory(
-  poolKey: string,
-  maker?: string,
-  taker?: string,
+  poolKey: string | (() => string),
+  maker?: string | (() => string | undefined),
+  taker?: string | (() => string | undefined),
   limit?: number
 ): UseInfiniteQueryResult<InfiniteData<Trade[], number>, Error> {
+  const network = useCurrentNetwork();
+  const getPoolKey = typeof poolKey === "function" ? poolKey : () => poolKey;
+  const getMaker = typeof maker === "function" ? maker : () => maker;
+  const getTaker = typeof taker === "function" ? taker : () => taker;
+
   return useInfiniteQuery(() => ({
-    queryKey: ["orderUpdates", poolKey, maker, taker, limit],
+    queryKey: [
+      "accountTradeHistory",
+      network(),
+      getPoolKey(),
+      getMaker(),
+      getTaker(),
+      limit,
+    ],
     queryFn: async ({ pageParam }) => {
       const searchParams = new URLSearchParams({
         limit: (limit || 50).toString(),
         end_time: Math.floor(pageParam / 1000).toString(),
       });
 
-      if (maker) searchParams.append("maker_balance_manager_id", maker);
-      if (taker) searchParams.append("taker_balance_manager_id", taker);
+      const makerValue = getMaker();
+      const takerValue = getTaker();
+      if (makerValue)
+        searchParams.append("maker_balance_manager_id", makerValue);
+      if (takerValue)
+        searchParams.append("taker_balance_manager_id", takerValue);
 
       return await dbIndexerClient(
-        `/trades/${poolKey}?${searchParams.toString()}`
+        `/trades/${getPoolKey()}?${searchParams.toString()}`,
+        network()
       );
     },
     getNextPageParam: (lastPage) => {
@@ -48,6 +66,6 @@ export function useTradeHistory(
       return firstPage[0].timestamp;
     },
     initialPageParam: Date.now(),
-    enabled: !!maker || !!taker,
+    enabled: !!getMaker() || !!getTaker(),
   }));
 }

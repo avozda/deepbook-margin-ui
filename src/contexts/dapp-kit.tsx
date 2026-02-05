@@ -3,11 +3,15 @@ import {
   useContext,
   createSignal,
   onCleanup,
+  onMount,
   createMemo,
   JSX,
 } from "solid-js";
+import { isServer } from "solid-js/web";
 import type { DAppKit } from "@mysten/dapp-kit-core";
 import type { ReadableAtom } from "nanostores";
+
+const NETWORK_STORAGE_KEY = "deepbookui:network";
 
 const useStore = <T,>(store: ReadableAtom<T>): (() => T) => {
   const [value, setValue] = createSignal<T>(store.get());
@@ -33,6 +37,15 @@ export const DAppKitProvider = (props: {
 }) => {
   // eslint-disable-next-line solid/reactivity
   const value = props.dAppKit;
+
+  onMount(() => {
+    if (isServer) return;
+    const savedNetwork = localStorage.getItem(NETWORK_STORAGE_KEY);
+    if (savedNetwork === "mainnet" || savedNetwork === "testnet") {
+      value.switchNetwork(savedNetwork);
+    }
+  });
+
   return (
     <DAppKitContext.Provider value={value}>
       {props.children}
@@ -103,7 +116,12 @@ export const useSwitchAccount = () => {
 
 export const useSwitchNetwork = () => {
   const dAppKit = useDAppKit();
-  return dAppKit.switchNetwork;
+  return (network: "mainnet" | "testnet") => {
+    if (!isServer) {
+      localStorage.setItem(NETWORK_STORAGE_KEY, network);
+    }
+    return dAppKit.switchNetwork(network);
+  };
 };
 
 export const useSignTransaction = () => {

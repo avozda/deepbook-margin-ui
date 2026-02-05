@@ -1,5 +1,6 @@
+import { useCurrentNetwork } from "@/contexts/dapp-kit";
 import { useCurrentPool } from "@/contexts/pool";
-import dbIndexerClient from "@/lib/indexer-client";
+import dbIndexerClient, { type Network } from "@/lib/indexer-client";
 import { useQuery } from "@tanstack/solid-query";
 
 export type OrderbookEntry = {
@@ -16,9 +17,13 @@ type OrderbookInfo = {
 
 async function fetchOrderbookInfo(
   poolKey: string,
+  network: Network,
   depth: number = 30
 ): Promise<OrderbookInfo> {
-  const data = await dbIndexerClient(`/orderbook/${poolKey}?depth=${depth}`);
+  const data = await dbIndexerClient(
+    `/orderbook/${poolKey}?depth=${depth}`,
+    network
+  );
 
   const asks: OrderbookEntry[] = data.asks.map((ask: [string, string]) => ({
     price: parseFloat(ask[0]),
@@ -42,11 +47,12 @@ async function fetchOrderbookInfo(
 }
 
 export function useOrderbook() {
+  const network = useCurrentNetwork();
   const { pool } = useCurrentPool();
 
   return useQuery(() => ({
-    queryKey: ["orderbook", pool().pool_name],
-    queryFn: async () => await fetchOrderbookInfo(pool().pool_name),
+    queryKey: ["orderbook", network(), pool().pool_name],
+    queryFn: async () => await fetchOrderbookInfo(pool().pool_name, network()),
     refetchInterval: 1000,
   }));
 }

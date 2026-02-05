@@ -9,6 +9,13 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
   useCurrentWallet,
   useCurrentAccount,
   useWallets,
@@ -23,6 +30,7 @@ type ConnectButtonProps = {
 
 export const ConnectButton = (props: ConnectButtonProps) => {
   const [open, setOpen] = createSignal(false);
+  const [copied, setCopied] = createSignal(false);
   const wallet = useCurrentWallet();
   const account = useCurrentAccount();
   const wallets = useWallets();
@@ -44,10 +52,17 @@ export const ConnectButton = (props: ConnectButtonProps) => {
     setOpen(false);
   };
 
-  const handleClick = () => {
-    if (wallet().isConnected) {
-      disconnectWallet();
+  const handleCopyAddress = async () => {
+    const address = account()?.address;
+    if (address) {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
+  };
+
+  const handleDisconnect = () => {
+    disconnectWallet();
   };
 
   return (
@@ -94,7 +109,49 @@ export const ConnectButton = (props: ConnectButtonProps) => {
         </Dialog>
       }
     >
-      <Button onClick={handleClick}>{displayText()}</Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger as={Button}>{displayText()}</DropdownMenuTrigger>
+        <DropdownMenuContent class="min-w-40">
+          <DropdownMenuItem onSelect={handleCopyAddress} class="cursor-pointer">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="size-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+              <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+            </svg>
+            {copied() ? "Copied!" : "Copy Address"}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={handleDisconnect}
+            variant="destructive"
+            class="cursor-pointer"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="size-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" x2="9" y1="12" y2="12" />
+            </svg>
+            Disconnect
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </Show>
   );
 };

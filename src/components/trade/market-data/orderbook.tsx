@@ -123,8 +123,10 @@ export const OrderBook = () => {
   let scrollHandler: ((e: Event) => void) | null = null;
   let lastSavedScroll = 0;
 
+  const currentPoolId = pool().pool_id;
+
   onMount(() => {
-    const poolId = pool().pool_id;
+    const poolId = currentPoolId;
     const container = tableContainerRef;
 
     if (!container) return;
@@ -176,7 +178,7 @@ export const OrderBook = () => {
 
     if (!container || !data || !hasInitializedScroll) return;
 
-    const savedScroll = scrollPositions.get(pool().pool_id);
+    const savedScroll = scrollPositions.get(currentPoolId);
     if (savedScroll !== undefined && savedScroll > 0) {
       const currentScroll = container.scrollTop;
       if (Math.abs(currentScroll - savedScroll) > 10) {
@@ -190,7 +192,7 @@ export const OrderBook = () => {
   });
 
   onCleanup(() => {
-    const poolId = pool().pool_id;
+    const poolId = currentPoolId;
     const container = tableContainerRef;
     if (container && scrollHandler) {
       container.removeEventListener("scroll", scrollHandler);

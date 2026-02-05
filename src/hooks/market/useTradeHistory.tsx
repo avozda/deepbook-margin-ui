@@ -1,3 +1,4 @@
+import { useCurrentNetwork } from "@/contexts/dapp-kit";
 import { useQuery, UseQueryResult } from "@tanstack/solid-query";
 import dbIndexerClient from "@/lib/indexer-client";
 
@@ -14,13 +15,15 @@ type Trade = {
   timestamp: number;
 };
 
-// for some reason infinite query doesn't work with refetchInterval
 export function useTradeHistory(
   poolKey: string
 ): UseQueryResult<Trade[], Error> {
+  const network = useCurrentNetwork();
+
   return useQuery(() => ({
-    queryKey: ["tradeHistory", poolKey],
-    queryFn: async () => await dbIndexerClient(`/trades/${poolKey}?limit=50`),
+    queryKey: ["tradeHistory", network(), poolKey],
+    queryFn: async () =>
+      await dbIndexerClient(`/trades/${poolKey}?limit=50`, network()),
     refetchInterval: 1000,
   }));
 }

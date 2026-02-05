@@ -39,6 +39,7 @@ export const TradingPanel = () => {
 
       <div class="px-3 pt-3">
         <ToggleGroup
+          variant="outline"
           value={orderType()}
           onChange={(value) =>
             value && setOrderType(value as OrderExecutionType)

@@ -97,7 +97,7 @@ export const SidebarTrigger = (props: SidebarTriggerProps) => {
       variant="ghost"
       size="icon"
       class={cx(local.class)}
-      onClick={(e) => {
+      onClick={(e: MouseEvent) => {
         toggle();
         if (typeof local.onClick === "function") {
           local.onClick(e);

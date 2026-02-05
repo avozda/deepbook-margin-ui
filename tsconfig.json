@@ -10,9 +10,10 @@
     "allowJs": true,
     "noEmit": true,
     "strict": true,
+    "skipLibCheck": true,
     "types": ["vinxi/types/client", "node"],
     "isolatedModules": true,
-    "baseUrl": "./",
+    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }

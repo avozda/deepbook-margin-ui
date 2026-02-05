@@ -1,7 +1,7 @@
 import { createMemo, For, Show } from "solid-js";
 import { useCurrentPool } from "@/contexts/pool";
 import { useBalanceManager } from "@/contexts/balance-manager";
-import { useOrderHistory } from "@/hooks/account/useOrderHistory";
+import { useOrderHistory, type Order } from "@/hooks/account/useOrderHistory";
 import {
   Table,
   TableBody,
@@ -14,20 +14,44 @@ import {
 export const OrderHistory = () => {
   const { pool } = useCurrentPool();
   const { balanceManagerAddress } = useBalanceManager();
-  const orders = useOrderHistory(
-    pool().pool_name,
-    balanceManagerAddress() ?? ""
+  const ordersQuery = useOrderHistory(
+    () => pool().pool_name,
+    () => balanceManagerAddress() ?? ""
   );
 
-  const sortedOrders = createMemo(() => {
-    const allOrders = orders.data?.pages.flatMap((page) => page) || [];
-    return allOrders.sort((a, b) => b.timestamp - a.timestamp);
+  const closedOrders = createMemo(() => {
+    const allOrders = ordersQuery.data?.pages.flatMap((page) => page) || [];
+    const orderMap = new Map<string, Order>();
+
+    for (const order of allOrders) {
+      const existing = orderMap.get(order.order_id);
+      if (!existing || order.timestamp > existing.timestamp) {
+        orderMap.set(order.order_id, order);
+      }
+    }
+
+    return Array.from(orderMap.values())
+      .filter(
+        (order) =>
+          order.status === "Canceled" ||
+          order.status === "Expired" ||
+          order.status === "Filled" ||
+          order.remaining_quantity === 0
+      )
+      .sort((a, b) => b.timestamp - a.timestamp);
   });
 
+  const getDisplayStatus = (order: Order) => {
+    if (order.remaining_quantity === 0 && order.filled_quantity > 0) {
+      return "Filled";
+    }
+    return order.status;
+  };
+
   return (
-    <div class="relative h-full min-w-fit overflow-y-auto">
+    <div class="relative h-full">
       <Show
-        when={sortedOrders().length > 0}
+        when={closedOrders().length > 0}
         fallback={
           <div class="text-muted-foreground absolute inset-0 flex flex-col items-center justify-center gap-2 text-xs">
             <svg
@@ -60,7 +84,7 @@ export const OrderHistory = () => {
             </TableRow>
           </TableHeader>
           <TableBody class="text-xs [&_tr]:border-none">
-            <For each={sortedOrders()}>
+            <For each={closedOrders()}>
               {(order) => (
                 <TableRow>
                   <TableCell class="text-muted-foreground pl-4">
@@ -76,12 +100,14 @@ export const OrderHistory = () => {
                   <TableCell>{order.price}</TableCell>
                   <TableCell>{`${order.filled_quantity} / ${order.original_quantity}`}</TableCell>
                   <TableCell>
-                    {(order.filled_quantity * order.price).toFixed(4)}
+                    {(order.original_quantity * order.price).toFixed(4)}
                   </TableCell>
                   <TableCell class="font-mono">
                     {order.order_id.slice(0, 8)}...
                   </TableCell>
-                  <TableCell class="pr-4 text-right">{order.status}</TableCell>
+                  <TableCell class="pr-4 text-right">
+                    {getDisplayStatus(order)}
+                  </TableCell>
                 </TableRow>
               )}
             </For>

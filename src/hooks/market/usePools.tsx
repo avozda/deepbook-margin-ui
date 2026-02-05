@@ -1,4 +1,5 @@
 import dbIndexerClient from "@/lib/indexer-client";
+import { useCurrentNetwork } from "@/contexts/dapp-kit";
 import { useQuery, UseQueryResult } from "@tanstack/solid-query";
 
 export type Pool = {
@@ -18,9 +19,11 @@ export type Pool = {
 };
 
 export function usePools(): UseQueryResult<Pool[], Error> {
+  const network = useCurrentNetwork();
+
   return useQuery(() => ({
-    queryKey: ["pools"],
-    queryFn: async () => await dbIndexerClient(`/get_pools`),
+    queryKey: ["pools", network()],
+    queryFn: async () => await dbIndexerClient(`/get_pools`, network()),
     staleTime: 24 * 60 * 60 * 1000,
   }));
 }
