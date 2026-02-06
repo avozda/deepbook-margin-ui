@@ -1,8 +1,8 @@
 import { Show, Suspense, Switch, Match } from "solid-js";
-import { ConnectButton } from "@/components/header/connect-button";
-import { Settings } from "@/components/header/settings";
-import { PairTableTrigger } from "@/components/header/pair-table";
-import { MarketStats } from "@/components/header/market-stats";
+import { ConnectButton } from "@/components/Header/connect-button";
+import { Settings } from "@/components/Header/Settings";
+import { PairTableTrigger } from "@/components/Header/pair-table";
+import { MarketStats } from "@/components/Header/market-stats";
 import { useCurrentAccount } from "@/contexts/dapp-kit";
 import { useCurrentPool } from "@/contexts/pool";
 import { useBalancesFromCurrentPool } from "@/hooks/account/useBalances";
