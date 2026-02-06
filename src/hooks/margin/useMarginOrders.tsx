@@ -1,8 +1,4 @@
-import {
-  createMutation,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/solid-query";
+import { useMutation, useQueryClient } from "@tanstack/solid-query";
 import { Transaction } from "@mysten/sui/transactions";
 import { toast } from "somoto";
 import { useDeepBookAccessor } from "@/contexts/deepbook";
@@ -85,7 +81,7 @@ export function usePlaceMarginMarketOrder() {
   const { marginManagerKey, poolKey } = useMarginManager();
   const queryClient = useQueryClient();
 
-  return createMutation(() => ({
+  return useMutation(() => ({
     mutationKey: ["placeMarginMarketOrder"],
     mutationFn: async (params: PlaceMarginMarketOrderParams) => {
       const currentPoolKey = poolKey();
@@ -140,7 +136,7 @@ export function useCancelMarginOrder() {
   const { marginManagerKey, poolKey } = useMarginManager();
   const queryClient = useQueryClient();
 
-  return createMutation(() => ({
+  return useMutation(() => ({
     mutationKey: ["cancelMarginOrder"],
     mutationFn: async (orderId: string) => {
       const currentPoolKey = poolKey();
@@ -186,7 +182,7 @@ export function useCancelAllMarginOrders() {
   const { marginManagerKey, poolKey } = useMarginManager();
   const queryClient = useQueryClient();
 
-  return createMutation(() => ({
+  return useMutation(() => ({
     mutationKey: ["cancelAllMarginOrders"],
     mutationFn: async () => {
       const currentPoolKey = poolKey();
@@ -232,7 +228,7 @@ export function useWithdrawSettledAmounts() {
   const { marginManagerKey, poolKey } = useMarginManager();
   const queryClient = useQueryClient();
 
-  return createMutation(() => ({
+  return useMutation(() => ({
     mutationKey: ["withdrawSettledAmounts"],
     mutationFn: async () => {
       const currentPoolKey = poolKey();

@@ -8,7 +8,7 @@ import { useMarginManager } from "@/contexts/margin-manager";
 import { useTradingMode } from "@/contexts/trading-mode";
 import { useDeepBookAccount } from "@/hooks/account/useDeepBookAccount";
 import { useManagerBalance } from "@/hooks/account/useBalances";
-import { useMarginBalanceManagerId } from "@/hooks/margin/useMarginBalanceManagerId";
+
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -26,7 +26,6 @@ export const SettledBalance = () => {
   const queryClient = useQueryClient();
   const { marginManagerKey, hasMarginManager } = useMarginManager();
   const { tradingMode } = useTradingMode();
-  const marginBmQuery = useMarginBalanceManagerId();
 
   const spotAccount = useDeepBookAccount(pool().pool_name);
   const managerBaseBalanceQuery = useManagerBalance(

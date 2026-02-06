@@ -4,7 +4,6 @@ import { useMarginManager } from "@/contexts/margin-manager";
 import { useOrderbook } from "@/hooks/market/useOrderbook";
 import {
   useMarginAccountState,
-  useHealthFactor,
   usePlaceMarginLimitOrder,
   usePlaceMarginMarketOrder,
 } from "@/hooks/margin";
@@ -15,7 +14,6 @@ import {
   NumberFieldInput,
   NumberFieldLabel,
 } from "@/components/ui/number-field";
-import { HealthFactorBar } from "./health-factor-bar";
 
 type PositionType = "buy" | "sell";
 type OrderExecutionType = "limit" | "market";
@@ -30,7 +28,6 @@ const MarginOrderForm = (props: MarginOrderFormProps) => {
   const { hasMarginManager } = useMarginManager();
   const orderbookQuery = useOrderbook();
   const accountStateQuery = useMarginAccountState();
-  const healthFactorQuery = useHealthFactor();
   const placeMarginLimitOrder = usePlaceMarginLimitOrder();
   const placeMarginMarketOrder = usePlaceMarginMarketOrder();
 
@@ -281,15 +278,6 @@ const MarginOrderForm = (props: MarginOrderFormProps) => {
             </div>
           </div>
         </div>
-
-        <Show when={hasMarginManager()}>
-          <HealthFactorBar
-            riskRatio={healthFactorQuery.data?.riskRatio ?? Infinity}
-            status={healthFactorQuery.data?.status ?? "safe"}
-            isLoading={healthFactorQuery.isLoading}
-            showValue={false}
-          />
-        </Show>
 
         <Button
           class={`w-full ${props.positionType === "buy" ? "bg-[#26a69a] hover:bg-[#26a69a]/90" : "bg-[#ef5350] hover:bg-[#ef5350]/90"}`}

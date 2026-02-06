@@ -1,4 +1,4 @@
-import { createQuery, createMutation } from "@tanstack/solid-query";
+import { useQuery, useMutation } from "@tanstack/solid-query";
 import { Transaction } from "@mysten/sui/transactions";
 import { coinWithBalance } from "@mysten/sui/transactions";
 import { toast } from "somoto";
@@ -11,7 +11,7 @@ import type { LiquidatablePosition } from "@/types/margin";
 export function useLiquidatablePositions(poolId?: () => string | undefined) {
   const network = useCurrentNetwork();
 
-  return createQuery(() => ({
+  return useQuery(() => ({
     queryKey: ["liquidatablePositions", network(), poolId?.()],
     queryFn: async (): Promise<LiquidatablePosition[]> => {
       const indexer = new MarginIndexerClient(network());
@@ -35,7 +35,7 @@ export function useLiquidate() {
   const getDbClient = useDeepBookAccessor();
   const signAndExecute = useSignAndExecuteTransaction();
 
-  return createMutation(() => ({
+  return useMutation(() => ({
     mutationKey: ["liquidate"],
     mutationFn: async (params: LiquidateParams) => {
       const tx = new Transaction();

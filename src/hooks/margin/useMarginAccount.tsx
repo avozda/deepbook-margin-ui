@@ -1,4 +1,4 @@
-import { createMutation } from "@tanstack/solid-query";
+import { useMutation } from "@tanstack/solid-query";
 import { Transaction } from "@mysten/sui/transactions";
 import { toast } from "somoto";
 import { useDeepBookAccessor } from "@/contexts/deepbook";
@@ -14,7 +14,7 @@ export function useCreateMarginManager() {
   const suiClient = useSuiClient();
   const { setMarginManager } = useMarginManager();
 
-  return createMutation(() => ({
+  return useMutation(() => ({
     mutationKey: ["createMarginManager"],
     mutationFn: async (poolKey: string) => {
       const tx = new Transaction();
@@ -60,7 +60,7 @@ export function useMarginDeposit() {
   const suiClient = useSuiClient();
   const { marginManagerKey } = useMarginManager();
 
-  return createMutation(() => ({
+  return useMutation(() => ({
     mutationKey: ["marginDeposit"],
     mutationFn: async (params: { asset: DepositAssetType; amount: number }) => {
       const tx = new Transaction();
@@ -123,7 +123,7 @@ export function useMarginWithdraw() {
   const suiClient = useSuiClient();
   const { marginManagerKey } = useMarginManager();
 
-  return createMutation(() => ({
+  return useMutation(() => ({
     mutationKey: ["marginWithdraw"],
     mutationFn: async (params: {
       asset: WithdrawAssetType;

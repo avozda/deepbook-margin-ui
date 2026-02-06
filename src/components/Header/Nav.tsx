@@ -1,176 +1,42 @@
-import { Show, Suspense, createSignal } from "solid-js";
-import { Wallet, Check, Copy, Plus } from "lucide-solid";
-import { Transaction } from "@mysten/sui/transactions";
+import { Show, Suspense, Switch, Match } from "solid-js";
 import { ConnectButton } from "@/components/header/connect-button";
 import { Settings } from "@/components/header/settings";
 import { PairTableTrigger } from "@/components/header/pair-table";
 import { MarketStats } from "@/components/header/market-stats";
-import {
-  useBalanceManager,
-  useBalanceManagerIds,
-} from "@/contexts/balance-manager";
-import {
-  useCurrentAccount,
-  useSuiClient,
-  useSignAndExecuteTransaction,
-} from "@/contexts/dapp-kit";
-import { useDeepBookAccessor } from "@/contexts/deepbook";
-import { truncateAddress } from "@/lib/utils";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
+import { useCurrentAccount } from "@/contexts/dapp-kit";
+import { useCurrentPool } from "@/contexts/pool";
+import { useBalancesFromCurrentPool } from "@/hooks/account/useBalances";
 
-const BalanceManagerSelector = () => {
+const WalletBalances = () => {
   const account = useCurrentAccount();
-  const suiClient = useSuiClient();
-  const getDbClient = useDeepBookAccessor();
-  const signAndExecuteTransaction = useSignAndExecuteTransaction();
-  const { balanceManagerAddress, setBalanceManager } = useBalanceManager();
-  const balanceManagerIdsQuery = useBalanceManagerIds();
-  const [copied, setCopied] = createSignal(false);
-  const [isCreating, setIsCreating] = createSignal(false);
-
-  const handleCopy = (e: Event) => {
-    e.stopPropagation();
-    const address = balanceManagerAddress();
-    if (address) {
-      navigator.clipboard.writeText(address);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const handleCreateBalanceManager = async () => {
-    setIsCreating(true);
-    const tx = new Transaction();
-    getDbClient().balanceManager.createAndShareBalanceManager()(tx);
-    try {
-      const result = await signAndExecuteTransaction({
-        transaction: tx,
-      });
-
-      if (result.$kind !== "Transaction") {
-        console.error("Transaction failed:", result);
-        return;
-      }
-
-      const txResult = await suiClient().waitForTransaction({
-        digest: result.Transaction.digest,
-        options: {
-          showObjectChanges: true,
-        },
-      });
-
-      const managerAddress: string | undefined = txResult.objectChanges?.find(
-        (change: any) => change.type === "created"
-      )?.["objectId"];
-
-      if (managerAddress) {
-        setBalanceManager(managerAddress);
-        balanceManagerIdsQuery.refetch();
-      }
-    } catch (error) {
-      console.error("Error creating balance manager:", error);
-    } finally {
-      setIsCreating(false);
-    }
-  };
+  const { pool, round } = useCurrentPool();
+  const {
+    baseAssetBalance,
+    quoteAssetBalance,
+    isLoading: isWalletBalanceLoading,
+  } = useBalancesFromCurrentPool();
 
   return (
     <Show when={account()}>
-      <Suspense
-        fallback={
-          <div class="bg-muted h-8 w-32 animate-pulse rounded-md border" />
-        }
-      >
-        <Show
-          when={!balanceManagerIdsQuery.isLoading}
-          fallback={
-            <div class="bg-muted h-8 w-32 animate-pulse rounded-md border" />
-          }
-        >
-          <Show
-            when={
-              balanceManagerIdsQuery.data &&
-              balanceManagerIdsQuery.data.length > 0
-            }
-            fallback={
-              <Tooltip>
-                <TooltipTrigger
-                  as={Button}
-                  variant="outline"
-                  size="sm"
-                  class="h-8 gap-2"
-                  onClick={handleCreateBalanceManager}
-                  disabled={isCreating()}
-                >
-                  <Plus class="size-3.5" />
-                  <span class="hidden sm:inline">
-                    {isCreating() ? "Creating..." : "Create Manager"}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Create a balance manager to start trading</p>
-                </TooltipContent>
-              </Tooltip>
-            }
-          >
-            <div class="flex items-center gap-1">
-              <Select
-                class="space-y-0"
-                options={balanceManagerIdsQuery.data ?? []}
-                optionValue={(item) => item}
-                optionTextValue={(item) => truncateAddress(item)}
-                value={balanceManagerAddress() ?? undefined}
-                onChange={(value) => value && setBalanceManager(value)}
-                placeholder="Select manager"
-                sameWidth={false}
-                itemComponent={(props) => (
-                  <SelectItem item={props.item} class="font-mono text-xs">
-                    {truncateAddress(props.item.rawValue)}
-                  </SelectItem>
-                )}
-              >
-                <SelectTrigger class="h-8 w-[140px] gap-2 font-mono text-xs">
-                  <Wallet class="text-muted-foreground size-3.5 shrink-0" />
-                  <SelectValue<string>>
-                    {(state) => truncateAddress(state.selectedOption())}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent />
-              </Select>
-              <Show when={balanceManagerAddress()}>
-                <Tooltip>
-                  <TooltipTrigger
-                    as={Button}
-                    variant="ghost"
-                    size="icon"
-                    class="size-8"
-                    onClick={handleCopy}
-                  >
-                    <Show when={copied()} fallback={<Copy class="size-3.5" />}>
-                      <Check class="size-3.5 text-green-500" />
-                    </Show>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Export Balance Manager</p>
-                  </TooltipContent>
-                </Tooltip>
-              </Show>
-            </div>
-          </Show>
-        </Show>
-      </Suspense>
+      <Switch>
+        <Match when={isWalletBalanceLoading()}>
+          <div class="flex items-center gap-3">
+            <div class="bg-muted h-4 w-20 animate-pulse rounded" />
+            <div class="bg-muted h-4 w-20 animate-pulse rounded" />
+          </div>
+        </Match>
+        <Match when={true}>
+          <div class="text-muted-foreground flex items-center gap-3 text-xs">
+            <span>
+              {round.display(baseAssetBalance())} {pool().base_asset_symbol}
+            </span>
+            <span class="text-muted-foreground/40">|</span>
+            <span>
+              {round.display(quoteAssetBalance())} {pool().quote_asset_symbol}
+            </span>
+          </div>
+        </Match>
+      </Switch>
     </Show>
   );
 };
@@ -185,7 +51,9 @@ export const Nav = () => {
         </Suspense>
       </div>
       <div class="flex items-center gap-2 md:gap-4">
-        <BalanceManagerSelector />
+        <Suspense>
+          <WalletBalances />
+        </Suspense>
         <ConnectButton connectText="Connect" />
         <Settings />
       </div>
