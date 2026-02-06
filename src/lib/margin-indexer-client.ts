@@ -1,6 +1,7 @@
 import type {
   MarginManagerInfo,
   MarginManagerState,
+  MarginManagerCreatedEvent,
   CollateralEvent,
   LoanBorrowedEvent,
   LoanRepaidEvent,
@@ -43,6 +44,15 @@ export class MarginIndexerClient {
     }
 
     return response.json();
+  }
+
+  async getMarginManagerCreated(
+    marginManagerId: string
+  ): Promise<MarginManagerCreatedEvent[]> {
+    return this.fetchJson<MarginManagerCreatedEvent[]>(
+      "/margin_manager_created",
+      { margin_manager_id: marginManagerId }
+    );
   }
 
   async getMarginManagersInfo(): Promise<MarginManagerInfo[]> {

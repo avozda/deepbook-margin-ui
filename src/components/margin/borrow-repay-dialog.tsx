@@ -43,8 +43,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { HealthFactorBar } from "./health-factor-bar";
 import { RISK_THRESHOLDS, type HealthStatus } from "@/types/margin";
+import type { LoanAction } from "./margin-actions";
 
-type OperationType = "borrow" | "repay";
 type AssetOption = "base" | "quote";
 
 const assetOptions: AssetOption[] = ["base", "quote"];
@@ -59,18 +59,30 @@ function calculateHealthStatus(riskRatio: number): HealthStatus {
   return "safe";
 }
 
-export const BorrowRepayForm = () => {
+type BorrowRepayDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  initialAction: LoanAction;
+};
+
+const BorrowRepayDialog = (props: BorrowRepayDialogProps) => {
   const { hasMarginManager } = useMarginManager();
   const { borrowBase, borrowQuote, isPending: isBorrowPending } = useBorrow();
   const { repayBase, repayQuote, isPending: isRepayPending } = useRepay();
   const healthFactorQuery = useHealthFactor();
   const accountStateQuery = useMarginAccountState();
 
-  const [operationType, setOperationType] =
-    createSignal<OperationType>("borrow");
+  const [operationType, setOperationType] = createSignal<LoanAction>(
+    props.initialAction
+  );
   const [selectedAsset, setSelectedAsset] = createSignal<AssetOption>("quote");
   const [amount, setAmount] = createSignal<number>(0);
-  const [isOpen, setIsOpen] = createSignal(false);
+
+  createEffect(() => {
+    if (props.open) {
+      setOperationType(props.initialAction);
+    }
+  });
 
   const getAssetSymbol = (asset: AssetOption): string => {
     const state = accountStateQuery.data;
@@ -151,7 +163,7 @@ export const BorrowRepayForm = () => {
   });
 
   createEffect(() => {
-    if (isOpen()) {
+    if (props.open) {
       healthFactorQuery.refetch();
       accountStateQuery.refetch();
     }
@@ -168,7 +180,7 @@ export const BorrowRepayForm = () => {
     }
 
     setAmount(0);
-    setIsOpen(false);
+    props.onOpenChange(false);
   };
 
   const handleRepay = async () => {
@@ -182,7 +194,7 @@ export const BorrowRepayForm = () => {
     }
 
     setAmount(0);
-    setIsOpen(false);
+    props.onOpenChange(false);
   };
 
   const handleSubmit = async (e: Event) => {
@@ -211,29 +223,7 @@ export const BorrowRepayForm = () => {
 
   return (
     <Show when={hasMarginManager()}>
-      <Dialog open={isOpen()} onOpenChange={setIsOpen}>
-        <Button
-          class="mt-3 grow"
-          variant="outline"
-          onClick={() => {
-            setSelectedAsset("quote");
-            setOperationType("borrow");
-            setIsOpen(true);
-          }}
-        >
-          Borrow
-        </Button>
-        <Button
-          class="mt-3 grow"
-          variant="outline"
-          onClick={() => {
-            setSelectedAsset("quote");
-            setOperationType("repay");
-            setIsOpen(true);
-          }}
-        >
-          Repay
-        </Button>
+      <Dialog open={props.open} onOpenChange={props.onOpenChange}>
         <DialogContent class="w-screen max-w-md">
           <DialogHeader>
             <DialogTitle>Manage Loans</DialogTitle>
@@ -241,7 +231,7 @@ export const BorrowRepayForm = () => {
           <Tabs
             class="mt-4"
             value={operationType()}
-            onChange={(value) => setOperationType(value as OperationType)}
+            onChange={(value) => setOperationType(value as LoanAction)}
           >
             <TabsList class="grid w-full grid-cols-2">
               <TabsIndicator />
@@ -509,3 +499,5 @@ export const BorrowRepayForm = () => {
     </Show>
   );
 };
+
+export default BorrowRepayDialog;

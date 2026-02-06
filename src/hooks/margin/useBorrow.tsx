@@ -1,43 +1,51 @@
-import { createMutation, useQueryClient } from "@tanstack/solid-query";
+import { useMutation } from "@tanstack/solid-query";
 import { Transaction } from "@mysten/sui/transactions";
 import { toast } from "somoto";
 import { useDeepBookAccessor } from "@/contexts/deepbook";
 import { useMarginManager } from "@/contexts/margin-manager";
-import { useSignAndExecuteTransaction } from "@/contexts/dapp-kit";
+import {
+  useSignAndExecuteTransaction,
+  useSuiClient,
+} from "@/contexts/dapp-kit";
 
 export type BorrowAssetType = "base" | "quote";
 
 export function useBorrowBase() {
   const getDbClient = useDeepBookAccessor();
   const signAndExecute = useSignAndExecuteTransaction();
-  const { marginManagerKey, poolKey } = useMarginManager();
-  const queryClient = useQueryClient();
+  const suiClient = useSuiClient();
+  const { marginManagerKey } = useMarginManager();
 
-  return createMutation(() => ({
+  return useMutation(() => ({
     mutationKey: ["borrowBase"],
     mutationFn: async (amount: number) => {
-      const currentPoolKey = poolKey();
-      if (!currentPoolKey) {
-        throw new Error("No margin manager pool configured");
-      }
-
       const tx = new Transaction();
-      getDbClient().deepbook.marginManager.borrowBase(
-        marginManagerKey(),
-        currentPoolKey,
-        amount
-      )(tx);
+      getDbClient().marginManager.borrowBase(marginManagerKey(), amount)(tx);
 
       const result = await signAndExecute({ transaction: tx });
       if (result.$kind !== "Transaction") {
         throw new Error("Transaction failed");
       }
 
+      await suiClient().waitForTransaction({
+        digest: result.Transaction.digest,
+      });
+
       return result;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["marginAccountState"] });
-      queryClient.invalidateQueries({ queryKey: ["healthFactor"] });
+    onSuccess: async (_data, _variables, _context, mutation) => {
+      mutation.client.invalidateQueries({ queryKey: ["marginAccountState"] });
+      mutation.client.invalidateQueries({ queryKey: ["healthFactor"] });
+      mutation.client.invalidateQueries({ queryKey: ["walletBalances"] });
+
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      await Promise.all([
+        mutation.client.refetchQueries({ queryKey: ["marginAccountState"] }),
+        mutation.client.refetchQueries({ queryKey: ["healthFactor"] }),
+        mutation.client.refetchQueries({ queryKey: ["walletBalances"] }),
+      ]);
+
       toast.success("Borrow successful");
     },
     onError: (err: Error) => {
@@ -49,34 +57,39 @@ export function useBorrowBase() {
 export function useBorrowQuote() {
   const getDbClient = useDeepBookAccessor();
   const signAndExecute = useSignAndExecuteTransaction();
-  const { marginManagerKey, poolKey } = useMarginManager();
-  const queryClient = useQueryClient();
+  const suiClient = useSuiClient();
+  const { marginManagerKey } = useMarginManager();
 
-  return createMutation(() => ({
+  return useMutation(() => ({
     mutationKey: ["borrowQuote"],
     mutationFn: async (amount: number) => {
-      const currentPoolKey = poolKey();
-      if (!currentPoolKey) {
-        throw new Error("No margin manager pool configured");
-      }
-
       const tx = new Transaction();
-      getDbClient().deepbook.marginManager.borrowQuote(
-        marginManagerKey(),
-        currentPoolKey,
-        amount
-      )(tx);
+      getDbClient().marginManager.borrowQuote(marginManagerKey(), amount)(tx);
 
       const result = await signAndExecute({ transaction: tx });
       if (result.$kind !== "Transaction") {
         throw new Error("Transaction failed");
       }
 
+      await suiClient().waitForTransaction({
+        digest: result.Transaction.digest,
+      });
+
       return result;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["marginAccountState"] });
-      queryClient.invalidateQueries({ queryKey: ["healthFactor"] });
+    onSuccess: async (_data, _variables, _context, mutation) => {
+      mutation.client.invalidateQueries({ queryKey: ["marginAccountState"] });
+      mutation.client.invalidateQueries({ queryKey: ["healthFactor"] });
+      mutation.client.invalidateQueries({ queryKey: ["walletBalances"] });
+
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      await Promise.all([
+        mutation.client.refetchQueries({ queryKey: ["marginAccountState"] }),
+        mutation.client.refetchQueries({ queryKey: ["healthFactor"] }),
+        mutation.client.refetchQueries({ queryKey: ["walletBalances"] }),
+      ]);
+
       toast.success("Borrow successful");
     },
     onError: (err: Error) => {
@@ -88,28 +101,39 @@ export function useBorrowQuote() {
 export function useRepayBase() {
   const getDbClient = useDeepBookAccessor();
   const signAndExecute = useSignAndExecuteTransaction();
+  const suiClient = useSuiClient();
   const { marginManagerKey } = useMarginManager();
-  const queryClient = useQueryClient();
 
-  return createMutation(() => ({
+  return useMutation(() => ({
     mutationKey: ["repayBase"],
     mutationFn: async (amount?: number) => {
       const tx = new Transaction();
-      getDbClient().deepbook.marginManager.repayBase(
-        marginManagerKey(),
-        amount
-      )(tx);
+      getDbClient().marginManager.repayBase(marginManagerKey(), amount)(tx);
 
       const result = await signAndExecute({ transaction: tx });
       if (result.$kind !== "Transaction") {
         throw new Error("Transaction failed");
       }
 
+      await suiClient().waitForTransaction({
+        digest: result.Transaction.digest,
+      });
+
       return result;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["marginAccountState"] });
-      queryClient.invalidateQueries({ queryKey: ["healthFactor"] });
+    onSuccess: async (_data, _variables, _context, mutation) => {
+      mutation.client.invalidateQueries({ queryKey: ["marginAccountState"] });
+      mutation.client.invalidateQueries({ queryKey: ["healthFactor"] });
+      mutation.client.invalidateQueries({ queryKey: ["walletBalances"] });
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      await Promise.all([
+        mutation.client.refetchQueries({ queryKey: ["marginAccountState"] }),
+        mutation.client.refetchQueries({ queryKey: ["healthFactor"] }),
+        mutation.client.refetchQueries({ queryKey: ["walletBalances"] }),
+      ]);
+
       toast.success("Repayment successful");
     },
     onError: (err: Error) => {
@@ -121,28 +145,39 @@ export function useRepayBase() {
 export function useRepayQuote() {
   const getDbClient = useDeepBookAccessor();
   const signAndExecute = useSignAndExecuteTransaction();
+  const suiClient = useSuiClient();
   const { marginManagerKey } = useMarginManager();
-  const queryClient = useQueryClient();
 
-  return createMutation(() => ({
+  return useMutation(() => ({
     mutationKey: ["repayQuote"],
     mutationFn: async (amount?: number) => {
       const tx = new Transaction();
-      getDbClient().deepbook.marginManager.repayQuote(
-        marginManagerKey(),
-        amount
-      )(tx);
+      getDbClient().marginManager.repayQuote(marginManagerKey(), amount)(tx);
 
       const result = await signAndExecute({ transaction: tx });
       if (result.$kind !== "Transaction") {
         throw new Error("Transaction failed");
       }
 
+      await suiClient().waitForTransaction({
+        digest: result.Transaction.digest,
+      });
+
       return result;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["marginAccountState"] });
-      queryClient.invalidateQueries({ queryKey: ["healthFactor"] });
+    onSuccess: async (_data, _variables, _context, mutation) => {
+      mutation.client.invalidateQueries({ queryKey: ["marginAccountState"] });
+      mutation.client.invalidateQueries({ queryKey: ["healthFactor"] });
+      mutation.client.invalidateQueries({ queryKey: ["walletBalances"] });
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      await Promise.all([
+        mutation.client.refetchQueries({ queryKey: ["marginAccountState"] }),
+        mutation.client.refetchQueries({ queryKey: ["healthFactor"] }),
+        mutation.client.refetchQueries({ queryKey: ["walletBalances"] }),
+      ]);
+
       toast.success("Repayment successful");
     },
     onError: (err: Error) => {

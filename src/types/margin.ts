@@ -142,6 +142,20 @@ export type LiquidationEvent = {
   quote_pyth_decimals: number;
 };
 
+export type MarginManagerCreatedEvent = {
+  event_digest: string;
+  digest: string;
+  sender: string;
+  checkpoint: number;
+  checkpoint_timestamp_ms: number;
+  package: string;
+  margin_manager_id: string;
+  balance_manager_id: string;
+  deepbook_pool_id: string;
+  owner: string;
+  onchain_timestamp: number;
+};
+
 export type MarginPoolInfo = {
   poolKey: string;
   label: string;

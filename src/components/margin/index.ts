@@ -1,7 +1,7 @@
 export { HealthFactorBar, HealthFactorBadge } from "./health-factor-bar";
-export { MarginAccountPanel } from "./margin-account-panel";
-export { CollateralManager } from "./collateral-manager";
-export { BorrowRepayForm } from "./borrow-repay-form";
-export { PositionSummary } from "./position-summary";
-export { MarginOrderForm } from "./margin-order-form";
 export { LiquidationPanel } from "./liquidation-panel";
+export { default as MarginAccountPanel } from "./margin-account-panel";
+export { default as MarginOrderForm } from "./margin-order-form";
+export { default as MarginActions } from "./margin-actions";
+export { default as CollateralManagerDialog } from "./collateral-manager-dialog";
+export { default as BorrowRepayDialog } from "./borrow-repay-dialog";

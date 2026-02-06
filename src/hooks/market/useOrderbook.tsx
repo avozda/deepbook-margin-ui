@@ -25,18 +25,26 @@ async function fetchOrderbookInfo(
     network
   );
 
-  const asks: OrderbookEntry[] = data.asks.map((ask: [string, string]) => ({
-    price: parseFloat(ask[0]),
-    amount: parseFloat(ask[1]),
-  }));
+  const asks: OrderbookEntry[] = (data.asks ?? []).map(
+    (ask: [string, string]) => ({
+      price: parseFloat(ask[0]),
+      amount: parseFloat(ask[1]),
+    })
+  );
 
-  const bids: OrderbookEntry[] = data.bids.map((bid: [string, string]) => ({
-    price: parseFloat(bid[0]),
-    amount: parseFloat(bid[1]),
-  }));
+  const bids: OrderbookEntry[] = (data.bids ?? []).map(
+    (bid: [string, string]) => ({
+      price: parseFloat(bid[0]),
+      amount: parseFloat(bid[1]),
+    })
+  );
 
-  const spreadAmount = asks[0].price - bids[0].price;
-  const spreadPercent = (spreadAmount / bids[0].price) * 100;
+  const spreadAmount =
+    asks.length > 0 && bids.length > 0 ? asks[0].price - bids[0].price : 0;
+  const spreadPercent =
+    asks.length > 0 && bids.length > 0
+      ? (spreadAmount / bids[0].price) * 100
+      : 0;
 
   return {
     asks,
@@ -54,5 +62,7 @@ export function useOrderbook() {
     queryKey: ["orderbook", network(), pool().pool_name],
     queryFn: async () => await fetchOrderbookInfo(pool().pool_name, network()),
     refetchInterval: 1000,
+    retry: 2,
+    throwOnError: false,
   }));
 }

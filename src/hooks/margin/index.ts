@@ -39,3 +39,5 @@ export {
 } from "./useLiquidation";
 
 export { useMarginSupport } from "./useMarginSupport";
+
+export { useMarginBalanceManagerId } from "./useMarginBalanceManagerId";

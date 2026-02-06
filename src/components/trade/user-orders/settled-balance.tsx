@@ -1,10 +1,14 @@
-import { createSignal } from "solid-js";
+import { createSignal, createMemo } from "solid-js";
 import { Transaction } from "@mysten/sui/transactions";
+import { useQueryClient } from "@tanstack/solid-query";
 import { useCurrentPool } from "@/contexts/pool";
 import { useDeepBookAccessor } from "@/contexts/deepbook";
 import { useSignAndExecuteTransaction } from "@/contexts/dapp-kit";
+import { useMarginManager } from "@/contexts/margin-manager";
+import { useTradingMode } from "@/contexts/trading-mode";
 import { useDeepBookAccount } from "@/hooks/account/useDeepBookAccount";
 import { useManagerBalance } from "@/hooks/account/useBalances";
+import { useMarginBalanceManagerId } from "@/hooks/margin/useMarginBalanceManagerId";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -19,7 +23,12 @@ export const SettledBalance = () => {
   const { pool } = useCurrentPool();
   const getDbClient = useDeepBookAccessor();
   const signAndExecuteTransaction = useSignAndExecuteTransaction();
-  const account = useDeepBookAccount(pool().pool_name);
+  const queryClient = useQueryClient();
+  const { marginManagerKey, hasMarginManager } = useMarginManager();
+  const { tradingMode } = useTradingMode();
+  const marginBmQuery = useMarginBalanceManagerId();
+
+  const spotAccount = useDeepBookAccount(pool().pool_name);
   const managerBaseBalanceQuery = useManagerBalance(
     () => pool().base_asset_symbol
   );
@@ -28,24 +37,42 @@ export const SettledBalance = () => {
   );
   const [isLoading, setIsLoading] = createSignal(false);
 
+  const isMarginMode = createMemo(
+    () => tradingMode() === "margin" && hasMarginManager()
+  );
+
+  const settledBase = createMemo(() => {
+    return spotAccount.data?.settled_balances?.base ?? 0;
+  });
+
+  const settledQuote = createMemo(() => {
+    return spotAccount.data?.settled_balances?.quote ?? 0;
+  });
+
   const handleClaimSettledFunds = async () => {
     setIsLoading(true);
 
     const tx = new Transaction();
-    getDbClient().deepBook.withdrawSettledAmounts(
-      pool().pool_name,
-      "MANAGER"
-    )(tx);
+
+    if (isMarginMode()) {
+      getDbClient().poolProxy.withdrawSettledAmounts(marginManagerKey())(tx);
+    } else {
+      getDbClient().deepBook.withdrawSettledAmounts(
+        pool().pool_name,
+        "MANAGER"
+      )(tx);
+    }
 
     try {
       await signAndExecuteTransaction({ transaction: tx });
-      console.log("Withdrew settled balances");
 
       managerBaseBalanceQuery.refetch();
       managerQuoteBalanceQuery.refetch();
+      queryClient.invalidateQueries({ queryKey: ["marginAccountState"] });
+      queryClient.invalidateQueries({ queryKey: ["healthFactor"] });
 
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      account.refetch();
+      spotAccount.refetch();
     } catch (error) {
       console.error("Failed to withdraw settled balances:", error);
     } finally {
@@ -54,9 +81,7 @@ export const SettledBalance = () => {
   };
 
   const hasSettledBalance = () => {
-    const base = account.data?.settled_balances?.base ?? 0;
-    const quote = account.data?.settled_balances?.quote ?? 0;
-    return base > 0 || quote > 0;
+    return settledBase() > 0 || settledQuote() > 0;
   };
 
   return (
@@ -74,9 +99,12 @@ export const SettledBalance = () => {
           <TableRow>
             <TableCell class="text-muted-foreground pl-4">
               {pool().pool_name}
+              {isMarginMode() && (
+                <span class="text-muted-foreground ml-1">(Margin)</span>
+              )}
             </TableCell>
-            <TableCell>{account.data?.settled_balances?.base ?? 0}</TableCell>
-            <TableCell>{account.data?.settled_balances?.quote ?? 0}</TableCell>
+            <TableCell>{settledBase()}</TableCell>
+            <TableCell>{settledQuote()}</TableCell>
             <TableCell class="pr-4 text-right">
               <Button
                 variant="outline"

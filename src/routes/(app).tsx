@@ -1,6 +1,7 @@
 import {
   Suspense,
   Show,
+  ErrorBoundary,
   createMemo,
   createEffect,
   type ParentProps,
@@ -114,15 +115,31 @@ export default function AppLayout(props: ParentProps) {
                 <PoolProvider pool={pool()}>
                   <Nav />
                   <main class="min-h-0 flex-1 overflow-hidden">
-                    <Suspense
-                      fallback={
-                        <div class="flex h-full w-full items-center justify-center">
-                          <div class="border-primary h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
+                    <ErrorBoundary
+                      fallback={(err, reset) => (
+                        <div class="flex h-full w-full flex-col items-center justify-center gap-4">
+                          <p class="text-muted-foreground text-sm">
+                            Something went wrong
+                          </p>
+                          <button
+                            class="bg-primary text-primary-foreground rounded-md px-4 py-2 text-sm"
+                            onClick={reset}
+                          >
+                            Try Again
+                          </button>
                         </div>
-                      }
+                      )}
                     >
-                      {props.children}
-                    </Suspense>
+                      <Suspense
+                        fallback={
+                          <div class="flex h-full w-full items-center justify-center">
+                            <div class="border-primary h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" />
+                          </div>
+                        }
+                      >
+                        {props.children}
+                      </Suspense>
+                    </ErrorBoundary>
                   </main>
                 </PoolProvider>
               )}

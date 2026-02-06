@@ -5,7 +5,10 @@ import { useCurrentPool } from "@/contexts/pool";
 import { useDeepBookAccessor } from "@/contexts/deepbook";
 import { useSignAndExecuteTransaction } from "@/contexts/dapp-kit";
 import { useBalanceManager } from "@/contexts/balance-manager";
+import { useMarginManager } from "@/contexts/margin-manager";
+import { useTradingMode } from "@/contexts/trading-mode";
 import { useOrderHistory, type Order } from "@/hooks/account/useOrderHistory";
+import { useMarginBalanceManagerId } from "@/hooks/margin/useMarginBalanceManagerId";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -25,9 +28,20 @@ export const OpenOrders = () => {
   const signAndExecuteTransaction = useSignAndExecuteTransaction();
   const queryClient = useQueryClient();
   const { balanceManagerAddress } = useBalanceManager();
+  const { marginManagerKey, hasMarginManager } = useMarginManager();
+  const { tradingMode } = useTradingMode();
+  const marginBmQuery = useMarginBalanceManagerId();
+
+  const activeBalanceManagerId = createMemo(() => {
+    if (tradingMode() === "margin" && hasMarginManager()) {
+      return marginBmQuery.data ?? "";
+    }
+    return balanceManagerAddress() ?? "";
+  });
+
   const orderHistoryQuery = useOrderHistory(
     () => pool().pool_name,
-    () => balanceManagerAddress() ?? ""
+    activeBalanceManagerId
   );
 
   const openOrders = createMemo(() => {
@@ -54,19 +68,24 @@ export const OpenOrders = () => {
     setLoadingCancelOrders((prev) => new Set([...prev, orderId]));
 
     const tx = new Transaction();
-    getDbClient().deepBook.cancelOrder(
-      pool().pool_name,
-      "MANAGER",
-      orderId
-    )(tx);
+
+    if (tradingMode() === "margin" && hasMarginManager()) {
+      getDbClient().poolProxy.cancelOrder(marginManagerKey(), orderId)(tx);
+    } else {
+      getDbClient().deepBook.cancelOrder(
+        pool().pool_name,
+        "MANAGER",
+        orderId
+      )(tx);
+    }
 
     try {
       await signAndExecuteTransaction({ transaction: tx });
 
       queryClient.invalidateQueries({ queryKey: ["orderUpdates"] });
       queryClient.invalidateQueries({ queryKey: ["managerBalance"] });
-
-      console.log("Canceled order:", orderId);
+      queryClient.invalidateQueries({ queryKey: ["marginAccountState"] });
+      queryClient.invalidateQueries({ queryKey: ["healthFactor"] });
     } catch (error) {
       console.error("Failed to cancel order:", error);
 

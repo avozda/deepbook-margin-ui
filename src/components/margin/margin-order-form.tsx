@@ -25,7 +25,7 @@ type MarginOrderFormProps = {
   orderExecutionType: OrderExecutionType;
 };
 
-export const MarginOrderForm = (props: MarginOrderFormProps) => {
+const MarginOrderForm = (props: MarginOrderFormProps) => {
   const { pool, round } = useCurrentPool();
   const { hasMarginManager } = useMarginManager();
   const orderbookQuery = useOrderbook();
@@ -147,7 +147,7 @@ export const MarginOrderForm = (props: MarginOrderFormProps) => {
     placeMarginLimitOrder.isPending || placeMarginMarketOrder.isPending;
 
   return (
-    <div>
+    <div class="overflow-hidden">
       <form
         onSubmit={handleSubmit}
         id="margin-order"
@@ -165,11 +165,11 @@ export const MarginOrderForm = (props: MarginOrderFormProps) => {
               <NumberFieldLabel class="absolute top-2 left-2 text-xs">
                 LIMIT
               </NumberFieldLabel>
-              <NumberFieldLabel class="absolute top-2 right-2 text-xs">
+              <NumberFieldLabel class="absolute top-2 right-2 max-w-[60px] truncate text-xs">
                 {pool().quote_asset_symbol}
               </NumberFieldLabel>
               <NumberFieldInput
-                class="h-8 rounded-sm pr-14 text-right shadow-none hover:border-gray-300 focus:ring-0 focus:outline-2 focus:-outline-offset-1 focus:outline-gray-400"
+                class="h-8 rounded-sm pr-16 text-right shadow-none hover:border-gray-300 focus:ring-0 focus:outline-2 focus:-outline-offset-1 focus:outline-gray-400"
                 placeholder="0.0000"
                 onBlur={() => {
                   const val = limitPrice();
@@ -211,11 +211,11 @@ export const MarginOrderForm = (props: MarginOrderFormProps) => {
             <NumberFieldLabel class="absolute top-2 left-2 text-xs">
               AMOUNT
             </NumberFieldLabel>
-            <NumberFieldLabel class="absolute top-2 right-2 text-xs">
+            <NumberFieldLabel class="absolute top-2 right-2 max-w-[60px] truncate text-xs">
               {pool().base_asset_symbol}
             </NumberFieldLabel>
             <NumberFieldInput
-              class="h-8 rounded-sm pr-14 text-right shadow-none hover:border-gray-300 focus:ring-0 focus:outline-2 focus:-outline-offset-1 focus:outline-gray-400"
+              class="h-8 rounded-sm pr-16 text-right shadow-none hover:border-gray-300 focus:ring-0 focus:outline-2 focus:-outline-offset-1 focus:outline-gray-400"
               placeholder="0.0000"
               onBlur={() => {
                 const val = amount();
@@ -255,26 +255,26 @@ export const MarginOrderForm = (props: MarginOrderFormProps) => {
         </NumberField>
       </form>
 
-      <div class="flex h-full flex-col gap-3 border-t p-3 text-xs">
+      <div class="flex h-full flex-col gap-3 overflow-hidden border-t p-3 text-xs">
         <div class="flex flex-col gap-1">
-          <div class="text-muted-foreground flex justify-between">
-            <div>MIN SIZE</div>
-            <div>
+          <div class="text-muted-foreground flex justify-between gap-2">
+            <div class="shrink-0">MIN SIZE</div>
+            <div class="truncate">
               {pool().min_size / 10 ** pool().base_asset_decimals}{" "}
               {pool().base_asset_symbol}
             </div>
           </div>
-          <div class="text-muted-foreground flex justify-between">
-            <div>TOTAL</div>
-            <div>
+          <div class="text-muted-foreground flex justify-between gap-2">
+            <div class="shrink-0">TOTAL</div>
+            <div class="truncate">
               {total()
                 ? `${round.quote(total()!)} ${pool().quote_asset_symbol}`
                 : "--"}
             </div>
           </div>
-          <div class="text-muted-foreground flex justify-between">
-            <div>COLLATERAL</div>
-            <div>
+          <div class="text-muted-foreground flex justify-between gap-2">
+            <div class="shrink-0">COLLATERAL</div>
+            <div class="truncate">
               {props.positionType === "buy"
                 ? `${collateralBalance().quoteAsset.toFixed(4)} ${pool().quote_asset_symbol}`
                 : `${collateralBalance().baseAsset.toFixed(4)} ${pool().base_asset_symbol}`}
@@ -305,3 +305,5 @@ export const MarginOrderForm = (props: MarginOrderFormProps) => {
     </div>
   );
 };
+
+export default MarginOrderForm;

@@ -23,5 +23,7 @@ export function useSummary(): UseQueryResult<Pair[], Error> {
     queryKey: ["summary", network()],
     queryFn: async () => await dbIndexerClient("/summary", network()),
     refetchInterval: 1000,
+    retry: 2,
+    throwOnError: false,
   }));
 }

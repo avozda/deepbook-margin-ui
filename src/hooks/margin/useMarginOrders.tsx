@@ -1,4 +1,8 @@
-import { createMutation, useQueryClient } from "@tanstack/solid-query";
+import {
+  createMutation,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/solid-query";
 import { Transaction } from "@mysten/sui/transactions";
 import { toast } from "somoto";
 import { useDeepBookAccessor } from "@/contexts/deepbook";
@@ -25,7 +29,7 @@ export function usePlaceMarginLimitOrder() {
   const { marginManagerKey, poolKey } = useMarginManager();
   const queryClient = useQueryClient();
 
-  return createMutation(() => ({
+  return useMutation(() => ({
     mutationKey: ["placeMarginLimitOrder"],
     mutationFn: async (params: PlaceMarginLimitOrderParams) => {
       const currentPoolKey = poolKey();
@@ -34,7 +38,8 @@ export function usePlaceMarginLimitOrder() {
       }
 
       const tx = new Transaction();
-      getDbClient().deepbook.poolProxy.placeLimitOrder({
+
+      getDbClient().poolProxy.placeLimitOrder({
         poolKey: currentPoolKey,
         marginManagerKey: marginManagerKey(),
         clientOrderId: params.clientOrderId ?? Date.now().toString(),
@@ -52,12 +57,21 @@ export function usePlaceMarginLimitOrder() {
 
       return result;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["marginAccountState"] });
       queryClient.invalidateQueries({ queryKey: ["healthFactor"] });
       queryClient.invalidateQueries({ queryKey: ["marginOrders"] });
       queryClient.invalidateQueries({ queryKey: ["orderUpdates"] });
       toast.success("Limit order placed");
+
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ["marginAccountState"] }),
+        queryClient.refetchQueries({ queryKey: ["healthFactor"] }),
+        queryClient.refetchQueries({ queryKey: ["marginOrders"] }),
+        queryClient.refetchQueries({ queryKey: ["orderUpdates"] }),
+      ]);
     },
     onError: (err: Error) => {
       toast.error(`Order failed: ${err.message}`);
@@ -80,7 +94,7 @@ export function usePlaceMarginMarketOrder() {
       }
 
       const tx = new Transaction();
-      getDbClient().deepbook.poolProxy.placeMarketOrder({
+      getDbClient().poolProxy.placeMarketOrder({
         poolKey: currentPoolKey,
         marginManagerKey: marginManagerKey(),
         clientOrderId: params.clientOrderId ?? Date.now().toString(),
@@ -96,13 +110,23 @@ export function usePlaceMarginMarketOrder() {
 
       return result;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["marginAccountState"] });
       queryClient.invalidateQueries({ queryKey: ["healthFactor"] });
       queryClient.invalidateQueries({ queryKey: ["marginOrders"] });
       queryClient.invalidateQueries({ queryKey: ["orderUpdates"] });
       queryClient.invalidateQueries({ queryKey: ["accountTradeHistory"] });
       toast.success("Market order placed");
+
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ["marginAccountState"] }),
+        queryClient.refetchQueries({ queryKey: ["healthFactor"] }),
+        queryClient.refetchQueries({ queryKey: ["marginOrders"] }),
+        queryClient.refetchQueries({ queryKey: ["orderUpdates"] }),
+        queryClient.refetchQueries({ queryKey: ["accountTradeHistory"] }),
+      ]);
     },
     onError: (err: Error) => {
       toast.error(`Order failed: ${err.message}`);
@@ -113,17 +137,19 @@ export function usePlaceMarginMarketOrder() {
 export function useCancelMarginOrder() {
   const getDbClient = useDeepBookAccessor();
   const signAndExecute = useSignAndExecuteTransaction();
-  const { marginManagerKey } = useMarginManager();
+  const { marginManagerKey, poolKey } = useMarginManager();
   const queryClient = useQueryClient();
 
   return createMutation(() => ({
     mutationKey: ["cancelMarginOrder"],
     mutationFn: async (orderId: string) => {
+      const currentPoolKey = poolKey();
+      if (!currentPoolKey) {
+        throw new Error("No margin manager pool configured");
+      }
+
       const tx = new Transaction();
-      getDbClient().deepbook.poolProxy.cancelOrder(
-        marginManagerKey(),
-        orderId
-      )(tx);
+      getDbClient().poolProxy.cancelOrder(marginManagerKey(), orderId)(tx);
 
       const result = await signAndExecute({ transaction: tx });
       if (result.$kind !== "Transaction") {
@@ -132,10 +158,21 @@ export function useCancelMarginOrder() {
 
       return result;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ["marginAccountState"] });
+      queryClient.invalidateQueries({ queryKey: ["healthFactor"] });
       queryClient.invalidateQueries({ queryKey: ["marginOrders"] });
       queryClient.invalidateQueries({ queryKey: ["orderUpdates"] });
       toast.success("Order cancelled");
+
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ["marginAccountState"] }),
+        queryClient.refetchQueries({ queryKey: ["healthFactor"] }),
+        queryClient.refetchQueries({ queryKey: ["marginOrders"] }),
+        queryClient.refetchQueries({ queryKey: ["orderUpdates"] }),
+      ]);
     },
     onError: (err: Error) => {
       toast.error(`Cancel failed: ${err.message}`);
@@ -146,14 +183,19 @@ export function useCancelMarginOrder() {
 export function useCancelAllMarginOrders() {
   const getDbClient = useDeepBookAccessor();
   const signAndExecute = useSignAndExecuteTransaction();
-  const { marginManagerKey } = useMarginManager();
+  const { marginManagerKey, poolKey } = useMarginManager();
   const queryClient = useQueryClient();
 
   return createMutation(() => ({
     mutationKey: ["cancelAllMarginOrders"],
     mutationFn: async () => {
+      const currentPoolKey = poolKey();
+      if (!currentPoolKey) {
+        throw new Error("No margin manager pool configured");
+      }
+
       const tx = new Transaction();
-      getDbClient().deepbook.poolProxy.cancelAllOrders(marginManagerKey())(tx);
+      getDbClient().poolProxy.cancelAllOrders(marginManagerKey())(tx);
 
       const result = await signAndExecute({ transaction: tx });
       if (result.$kind !== "Transaction") {
@@ -162,10 +204,21 @@ export function useCancelAllMarginOrders() {
 
       return result;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ["marginAccountState"] });
+      queryClient.invalidateQueries({ queryKey: ["healthFactor"] });
       queryClient.invalidateQueries({ queryKey: ["marginOrders"] });
       queryClient.invalidateQueries({ queryKey: ["orderUpdates"] });
       toast.success("All orders cancelled");
+
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ["marginAccountState"] }),
+        queryClient.refetchQueries({ queryKey: ["healthFactor"] }),
+        queryClient.refetchQueries({ queryKey: ["marginOrders"] }),
+        queryClient.refetchQueries({ queryKey: ["orderUpdates"] }),
+      ]);
     },
     onError: (err: Error) => {
       toast.error(`Cancel all failed: ${err.message}`);
@@ -176,16 +229,19 @@ export function useCancelAllMarginOrders() {
 export function useWithdrawSettledAmounts() {
   const getDbClient = useDeepBookAccessor();
   const signAndExecute = useSignAndExecuteTransaction();
-  const { marginManagerKey } = useMarginManager();
+  const { marginManagerKey, poolKey } = useMarginManager();
   const queryClient = useQueryClient();
 
   return createMutation(() => ({
     mutationKey: ["withdrawSettledAmounts"],
     mutationFn: async () => {
+      const currentPoolKey = poolKey();
+      if (!currentPoolKey) {
+        throw new Error("No margin manager pool configured");
+      }
+
       const tx = new Transaction();
-      getDbClient().deepbook.poolProxy.withdrawSettledAmounts(
-        marginManagerKey()
-      )(tx);
+      getDbClient().poolProxy.withdrawSettledAmounts(marginManagerKey())(tx);
 
       const result = await signAndExecute({ transaction: tx });
       if (result.$kind !== "Transaction") {
@@ -194,10 +250,19 @@ export function useWithdrawSettledAmounts() {
 
       return result;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["marginAccountState"] });
       queryClient.invalidateQueries({ queryKey: ["healthFactor"] });
+      queryClient.invalidateQueries({ queryKey: ["walletBalances"] });
       toast.success("Settled amounts withdrawn");
+
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ["marginAccountState"] }),
+        queryClient.refetchQueries({ queryKey: ["healthFactor"] }),
+        queryClient.refetchQueries({ queryKey: ["walletBalances"] }),
+      ]);
     },
     onError: (err: Error) => {
       toast.error(`Withdrawal failed: ${err.message}`);

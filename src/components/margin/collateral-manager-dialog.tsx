@@ -38,13 +38,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { CollateralAction } from "./margin-actions";
 
-type TransferType = "deposit" | "withdraw";
 type AssetOption = "base" | "quote" | "deep";
 
 const assetOptions: AssetOption[] = ["base", "quote", "deep"];
 
-export const CollateralManager = () => {
+type CollateralManagerDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  initialAction: CollateralAction;
+};
+
+const CollateralManagerDialog = (props: CollateralManagerDialogProps) => {
   const network = useCurrentNetwork();
   const { hasMarginManager } = useMarginManager();
   const marginDeposit = useMarginDeposit();
@@ -53,10 +59,17 @@ export const CollateralManager = () => {
 
   const coins = () => (network() === "mainnet" ? mainnetCoins : testnetCoins);
 
-  const [transferType, setTransferType] = createSignal<TransferType>("deposit");
+  const [transferType, setTransferType] = createSignal<CollateralAction>(
+    props.initialAction
+  );
   const [selectedAsset, setSelectedAsset] = createSignal<AssetOption>("quote");
   const [amount, setAmount] = createSignal<number>(0);
-  const [isOpen, setIsOpen] = createSignal(false);
+
+  createEffect(() => {
+    if (props.open) {
+      setTransferType(props.initialAction);
+    }
+  });
 
   const getAssetSymbol = (asset: AssetOption): string => {
     const state = accountStateQuery.data;
@@ -89,7 +102,7 @@ export const CollateralManager = () => {
   };
 
   createEffect(() => {
-    if (isOpen()) {
+    if (props.open) {
       walletBalanceQuery.refetch();
       accountStateQuery.refetch();
     }
@@ -101,7 +114,7 @@ export const CollateralManager = () => {
       amount: amount(),
     });
     setAmount(0);
-    setIsOpen(false);
+    props.onOpenChange(false);
   };
 
   const handleWithdraw = async () => {
@@ -110,7 +123,7 @@ export const CollateralManager = () => {
       amount: amount(),
     });
     setAmount(0);
-    setIsOpen(false);
+    props.onOpenChange(false);
   };
 
   const handleSubmit = async (e: Event) => {
@@ -140,29 +153,7 @@ export const CollateralManager = () => {
 
   return (
     <Show when={hasMarginManager()}>
-      <Dialog open={isOpen()} onOpenChange={setIsOpen}>
-        <Button
-          class="mt-3 grow"
-          variant="outline"
-          onClick={() => {
-            setSelectedAsset("quote");
-            setTransferType("deposit");
-            setIsOpen(true);
-          }}
-        >
-          Deposit
-        </Button>
-        <Button
-          class="mt-3 grow"
-          variant="outline"
-          onClick={() => {
-            setSelectedAsset("base");
-            setTransferType("withdraw");
-            setIsOpen(true);
-          }}
-        >
-          Withdraw
-        </Button>
+      <Dialog open={props.open} onOpenChange={props.onOpenChange}>
         <DialogContent class="w-screen max-w-md">
           <DialogHeader>
             <DialogTitle>Manage Collateral</DialogTitle>
@@ -170,7 +161,7 @@ export const CollateralManager = () => {
           <Tabs
             class="mt-4"
             value={transferType()}
-            onChange={(value) => setTransferType(value as TransferType)}
+            onChange={(value) => setTransferType(value as CollateralAction)}
           >
             <TabsList class="grid w-full grid-cols-2">
               <TabsIndicator />
@@ -357,3 +348,5 @@ export const CollateralManager = () => {
     </Show>
   );
 };
+
+export default CollateralManagerDialog;

@@ -74,7 +74,7 @@ export function useHealthFactor() {
     },
     enabled: hasMarginManager(),
     refetchInterval: 10000,
-    staleTime: 5000,
+    staleTime: 0,
   }));
 }
 
@@ -117,6 +117,6 @@ export function useMarginAccountState() {
     },
     enabled: hasMarginManager(),
     refetchInterval: 10000,
-    staleTime: 5000,
+    staleTime: 0,
   }));
 }

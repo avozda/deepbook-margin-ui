@@ -1,9 +1,6 @@
-import {
-  createQuery,
-  createMutation,
-  useQueryClient,
-} from "@tanstack/solid-query";
+import { createQuery, createMutation } from "@tanstack/solid-query";
 import { Transaction } from "@mysten/sui/transactions";
+import { coinWithBalance } from "@mysten/sui/transactions";
 import { toast } from "somoto";
 import { useCurrentNetwork } from "@/contexts/dapp-kit";
 import { useDeepBookAccessor } from "@/contexts/deepbook";
@@ -37,17 +34,18 @@ export type LiquidateParams = {
 export function useLiquidate() {
   const getDbClient = useDeepBookAccessor();
   const signAndExecute = useSignAndExecuteTransaction();
-  const queryClient = useQueryClient();
 
   return createMutation(() => ({
     mutationKey: ["liquidate"],
     mutationFn: async (params: LiquidateParams) => {
       const tx = new Transaction();
 
-      const repayAmountRaw = Math.floor(params.repayAmount * params.coinScalar);
-      const repayCoin = tx.splitCoins(tx.gas, [tx.pure.u64(repayAmountRaw)]);
+      const repayCoin = coinWithBalance({
+        type: params.coinType,
+        balance: Math.floor(params.repayAmount * params.coinScalar),
+      });
 
-      getDbClient().deepbook.marginManager.liquidate(
+      getDbClient().marginManager.liquidate(
         params.managerAddress,
         params.poolKey,
         params.debtIsBase,
@@ -61,10 +59,12 @@ export function useLiquidate() {
 
       return result;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["liquidatablePositions"] });
-      queryClient.invalidateQueries({ queryKey: ["walletBalances"] });
-      queryClient.invalidateQueries({ queryKey: ["marginAccountState"] });
+    onSuccess: (_data, _variables, _context, mutation) => {
+      mutation.client.invalidateQueries({
+        queryKey: ["liquidatablePositions"],
+      });
+      mutation.client.invalidateQueries({ queryKey: ["walletBalances"] });
+      mutation.client.invalidateQueries({ queryKey: ["marginAccountState"] });
       toast.success("Liquidation successful");
     },
     onError: (err: Error) => {

@@ -1,4 +1,4 @@
-import { createMutation, useQueryClient } from "@tanstack/solid-query";
+import { createMutation } from "@tanstack/solid-query";
 import { Transaction } from "@mysten/sui/transactions";
 import { toast } from "somoto";
 import { useDeepBookAccessor } from "@/contexts/deepbook";
@@ -18,7 +18,7 @@ export function useCreateMarginManager() {
     mutationKey: ["createMarginManager"],
     mutationFn: async (poolKey: string) => {
       const tx = new Transaction();
-      tx.add(getDbClient().deepbook.marginManager.newMarginManager(poolKey));
+      getDbClient().marginManager.newMarginManager(poolKey)(tx);
 
       const result = await signAndExecute({ transaction: tx });
       if (result.$kind !== "Transaction") {
@@ -57,8 +57,8 @@ export type DepositAssetType = "base" | "quote" | "deep";
 export function useMarginDeposit() {
   const getDbClient = useDeepBookAccessor();
   const signAndExecute = useSignAndExecuteTransaction();
+  const suiClient = useSuiClient();
   const { marginManagerKey } = useMarginManager();
-  const queryClient = useQueryClient();
 
   return createMutation(() => ({
     mutationKey: ["marginDeposit"],
@@ -67,20 +67,20 @@ export function useMarginDeposit() {
       const managerKey = marginManagerKey();
 
       if (params.asset === "base") {
-        getDbClient().deepbook.marginManager.depositBase(
+        getDbClient().marginManager.depositBase({
           managerKey,
-          params.amount
-        )(tx);
+          amount: params.amount,
+        })(tx);
       } else if (params.asset === "quote") {
-        getDbClient().deepbook.marginManager.depositQuote(
+        getDbClient().marginManager.depositQuote({
           managerKey,
-          params.amount
-        )(tx);
+          amount: params.amount,
+        })(tx);
       } else {
-        getDbClient().deepbook.marginManager.depositDeep(
+        getDbClient().marginManager.depositDeep({
           managerKey,
-          params.amount
-        )(tx);
+          amount: params.amount,
+        })(tx);
       }
 
       const result = await signAndExecute({ transaction: tx });
@@ -88,12 +88,25 @@ export function useMarginDeposit() {
         throw new Error("Transaction failed");
       }
 
+      await suiClient().waitForTransaction({
+        digest: result.Transaction.digest,
+      });
+
       return result;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["marginAccountState"] });
-      queryClient.invalidateQueries({ queryKey: ["healthFactor"] });
-      queryClient.invalidateQueries({ queryKey: ["walletBalances"] });
+    onSuccess: async (_data, _variables, _context, mutation) => {
+      mutation.client.invalidateQueries({ queryKey: ["marginAccountState"] });
+      mutation.client.invalidateQueries({ queryKey: ["healthFactor"] });
+      mutation.client.invalidateQueries({ queryKey: ["walletBalances"] });
+
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      await Promise.all([
+        mutation.client.refetchQueries({ queryKey: ["marginAccountState"] }),
+        mutation.client.refetchQueries({ queryKey: ["healthFactor"] }),
+        mutation.client.refetchQueries({ queryKey: ["walletBalances"] }),
+      ]);
+
       toast.success("Deposit successful");
     },
     onError: (err: Error) => {
@@ -107,8 +120,8 @@ export type WithdrawAssetType = "base" | "quote" | "deep";
 export function useMarginWithdraw() {
   const getDbClient = useDeepBookAccessor();
   const signAndExecute = useSignAndExecuteTransaction();
+  const suiClient = useSuiClient();
   const { marginManagerKey } = useMarginManager();
-  const queryClient = useQueryClient();
 
   return createMutation(() => ({
     mutationKey: ["marginWithdraw"],
@@ -120,20 +133,14 @@ export function useMarginWithdraw() {
       const managerKey = marginManagerKey();
 
       if (params.asset === "base") {
-        getDbClient().deepbook.marginManager.withdrawBase(
-          managerKey,
-          params.amount
-        )(tx);
+        getDbClient().marginManager.withdrawBase(managerKey, params.amount)(tx);
       } else if (params.asset === "quote") {
-        getDbClient().deepbook.marginManager.withdrawQuote(
+        getDbClient().marginManager.withdrawQuote(
           managerKey,
           params.amount
         )(tx);
       } else {
-        getDbClient().deepbook.marginManager.withdrawDeep(
-          managerKey,
-          params.amount
-        )(tx);
+        getDbClient().marginManager.withdrawDeep(managerKey, params.amount)(tx);
       }
 
       const result = await signAndExecute({ transaction: tx });
@@ -141,12 +148,25 @@ export function useMarginWithdraw() {
         throw new Error("Transaction failed");
       }
 
+      await suiClient().waitForTransaction({
+        digest: result.Transaction.digest,
+      });
+
       return result;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["marginAccountState"] });
-      queryClient.invalidateQueries({ queryKey: ["healthFactor"] });
-      queryClient.invalidateQueries({ queryKey: ["walletBalances"] });
+    onSuccess: async (_data, _variables, _context, mutation) => {
+      mutation.client.invalidateQueries({ queryKey: ["marginAccountState"] });
+      mutation.client.invalidateQueries({ queryKey: ["healthFactor"] });
+      mutation.client.invalidateQueries({ queryKey: ["walletBalances"] });
+
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      await Promise.all([
+        mutation.client.refetchQueries({ queryKey: ["marginAccountState"] }),
+        mutation.client.refetchQueries({ queryKey: ["healthFactor"] }),
+        mutation.client.refetchQueries({ queryKey: ["walletBalances"] }),
+      ]);
+
       toast.success("Withdrawal successful");
     },
     onError: (err: Error) => {
