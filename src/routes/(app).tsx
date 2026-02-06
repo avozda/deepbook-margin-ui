@@ -7,14 +7,14 @@ import {
   type ParentProps,
 } from "solid-js";
 import { useNavigate, useParams } from "@solidjs/router";
-import { Nav } from "@/components/header/nav";
+import { Nav } from "@/components/Header/Nav";
 import {
   PairTable,
   PairTableTrigger,
   useSelectedPair,
-} from "@/components/header/pair-table";
-import { ConnectButton } from "@/components/header/connect-button";
-import { Settings } from "@/components/header/settings";
+} from "@/components/Header/pair-table";
+import { ConnectButton } from "@/components/Header/connect-button";
+import { Settings } from "@/components/Header/Settings";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { PoolProvider } from "@/contexts/pool";
 import { usePools } from "@/hooks/market/usePools";

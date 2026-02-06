@@ -30,7 +30,7 @@ export const OrderHistory = () => {
 
   const ordersQuery = useOrderHistory(
     () => pool().pool_name,
-    activeBalanceManagerId
+    () => activeBalanceManagerId()
   );
 
   const closedOrders = createMemo(() => {
