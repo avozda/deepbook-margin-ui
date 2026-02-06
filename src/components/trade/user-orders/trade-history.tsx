@@ -1,7 +1,10 @@
 import { createMemo, For, Show } from "solid-js";
 import { useCurrentPool } from "@/contexts/pool";
 import { useBalanceManager } from "@/contexts/balance-manager";
+import { useMarginManager } from "@/contexts/margin-manager";
+import { useTradingMode } from "@/contexts/trading-mode";
 import { useTradeHistory } from "@/hooks/account/useTradeHistory";
+import { useMarginBalanceManagerId } from "@/hooks/margin/useMarginBalanceManagerId";
 import {
   Table,
   TableBody,
@@ -14,14 +17,25 @@ import {
 export const UserTradeHistory = () => {
   const { pool } = useCurrentPool();
   const { balanceManagerAddress } = useBalanceManager();
+  const { hasMarginManager } = useMarginManager();
+  const { tradingMode } = useTradingMode();
+  const marginBmQuery = useMarginBalanceManagerId();
+
+  const activeBalanceManagerId = createMemo(() => {
+    if (tradingMode() === "margin" && hasMarginManager()) {
+      return marginBmQuery.data ?? undefined;
+    }
+    return balanceManagerAddress();
+  });
+
   const makerOrders = useTradeHistory(
     () => pool().pool_name,
-    () => balanceManagerAddress()
+    () => activeBalanceManagerId()
   );
   const takerOrders = useTradeHistory(
     () => pool().pool_name,
     undefined,
-    () => balanceManagerAddress()
+    () => activeBalanceManagerId()
   );
 
   const sortedOrders = createMemo(() => {

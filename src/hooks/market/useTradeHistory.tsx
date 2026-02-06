@@ -25,5 +25,7 @@ export function useTradeHistory(
     queryFn: async () =>
       await dbIndexerClient(`/trades/${poolKey}?limit=50`, network()),
     refetchInterval: 1000,
+    retry: 2,
+    throwOnError: false,
   }));
 }

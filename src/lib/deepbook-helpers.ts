@@ -56,6 +56,46 @@ export type AccountInfo = {
   owed_balances: { base: number; quote: number; deep: number };
 };
 
+function parseAccountInfo(
+  bcsBytes: number[],
+  baseScalar: number,
+  quoteScalar: number
+): AccountInfo {
+  const accountInfo = Account.parse(new Uint8Array(bcsBytes));
+
+  return {
+    epoch: String(accountInfo.epoch),
+    open_orders: {
+      contents: (accountInfo.open_orders.contents as unknown[]).map((id) =>
+        String(id)
+      ),
+    },
+    taker_volume: Number(accountInfo.taker_volume) / baseScalar,
+    maker_volume: Number(accountInfo.maker_volume) / baseScalar,
+    active_stake: Number(accountInfo.active_stake) / DEEP_SCALAR,
+    inactive_stake: Number(accountInfo.inactive_stake) / DEEP_SCALAR,
+    created_proposal: accountInfo.created_proposal,
+    voted_proposal: accountInfo.voted_proposal
+      ? String(accountInfo.voted_proposal)
+      : null,
+    unclaimed_rebates: {
+      base: Number(accountInfo.unclaimed_rebates.base) / baseScalar,
+      quote: Number(accountInfo.unclaimed_rebates.quote) / quoteScalar,
+      deep: Number(accountInfo.unclaimed_rebates.deep) / DEEP_SCALAR,
+    },
+    settled_balances: {
+      base: Number(accountInfo.settled_balances.base) / baseScalar,
+      quote: Number(accountInfo.settled_balances.quote) / quoteScalar,
+      deep: Number(accountInfo.settled_balances.deep) / DEEP_SCALAR,
+    },
+    owed_balances: {
+      base: Number(accountInfo.owed_balances.base) / baseScalar,
+      quote: Number(accountInfo.owed_balances.quote) / quoteScalar,
+      deep: Number(accountInfo.owed_balances.deep) / DEEP_SCALAR,
+    },
+  };
+}
+
 export async function getAccount(
   suiClient: SuiClientLike,
   dbClient: DeepBookClient,
@@ -84,39 +124,48 @@ export async function getAccount(
 
   try {
     const [bcsBytes] = returnValues[0];
-    const accountInfo = Account.parse(new Uint8Array(bcsBytes));
+    return parseAccountInfo(bcsBytes, baseScalar, quoteScalar);
+  } catch {
+    return null;
+  }
+}
 
-    return {
-      epoch: String(accountInfo.epoch),
-      open_orders: {
-        contents: (accountInfo.open_orders.contents as unknown[]).map((id) =>
-          String(id)
-        ),
-      },
-      taker_volume: Number(accountInfo.taker_volume) / baseScalar,
-      maker_volume: Number(accountInfo.maker_volume) / baseScalar,
-      active_stake: Number(accountInfo.active_stake) / DEEP_SCALAR,
-      inactive_stake: Number(accountInfo.inactive_stake) / DEEP_SCALAR,
-      created_proposal: accountInfo.created_proposal,
-      voted_proposal: accountInfo.voted_proposal
-        ? String(accountInfo.voted_proposal)
-        : null,
-      unclaimed_rebates: {
-        base: Number(accountInfo.unclaimed_rebates.base) / baseScalar,
-        quote: Number(accountInfo.unclaimed_rebates.quote) / quoteScalar,
-        deep: Number(accountInfo.unclaimed_rebates.deep) / DEEP_SCALAR,
-      },
-      settled_balances: {
-        base: Number(accountInfo.settled_balances.base) / baseScalar,
-        quote: Number(accountInfo.settled_balances.quote) / quoteScalar,
-        deep: Number(accountInfo.settled_balances.deep) / DEEP_SCALAR,
-      },
-      owed_balances: {
-        base: Number(accountInfo.owed_balances.base) / baseScalar,
-        quote: Number(accountInfo.owed_balances.quote) / quoteScalar,
-        deep: Number(accountInfo.owed_balances.deep) / DEEP_SCALAR,
-      },
-    };
+export async function getAccountByAddress(
+  suiClient: SuiClientLike,
+  packageId: string,
+  poolAddress: string,
+  baseCoinType: string,
+  quoteCoinType: string,
+  balanceManagerAddr: string,
+  senderAddress: string,
+  baseScalar: number,
+  quoteScalar: number
+): Promise<AccountInfo | null> {
+  const tx = new Transaction();
+  tx.setSenderIfNotSet(senderAddress);
+  tx.moveCall({
+    target: `${packageId}::pool::account`,
+    arguments: [tx.object(poolAddress), tx.object(balanceManagerAddr)],
+    typeArguments: [baseCoinType, quoteCoinType],
+  });
+
+  const res = await suiClient.simulateTransaction({
+    transaction: await tx.build({ client: suiClient as any }),
+    options: { showRawEffects: true },
+  });
+
+  if (res.effects?.status?.status !== "success") {
+    return null;
+  }
+
+  const returnValues = res.results?.[0]?.returnValues;
+  if (!returnValues || returnValues.length === 0) {
+    return null;
+  }
+
+  try {
+    const [bcsBytes] = returnValues[0];
+    return parseAccountInfo(bcsBytes, baseScalar, quoteScalar);
   } catch {
     return null;
   }

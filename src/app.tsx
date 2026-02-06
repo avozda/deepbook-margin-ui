@@ -4,6 +4,7 @@ import "./app.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import { DAppKitProvider } from "@/contexts/dapp-kit";
 import { BalanceManagerProvider } from "@/contexts/balance-manager";
+import { MarginManagerProvider } from "@/contexts/margin-manager";
 import { DeepBookProvider } from "@/contexts/deepbook";
 import { dAppKit } from "@/lib/dapp-kit";
 import {
@@ -11,6 +12,7 @@ import {
   ColorModeScript,
   createLocalStorageManager,
 } from "@kobalte/core";
+import { Toaster } from "@/components/ui/sonner";
 
 const queryClient = new QueryClient();
 
@@ -20,14 +22,17 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <DAppKitProvider dAppKit={dAppKit}>
         <BalanceManagerProvider>
-          <ColorModeScript storageType={storageManager.type} />
-          <ColorModeProvider storageManager={storageManager}>
-            <DeepBookProvider>
-              <Router>
-                <FileRoutes />
-              </Router>
-            </DeepBookProvider>
-          </ColorModeProvider>
+          <MarginManagerProvider>
+            <ColorModeScript storageType={storageManager.type} />
+            <ColorModeProvider storageManager={storageManager}>
+              <DeepBookProvider>
+                <Router>
+                  <Toaster />
+                  <FileRoutes />
+                </Router>
+              </DeepBookProvider>
+            </ColorModeProvider>
+          </MarginManagerProvider>
         </BalanceManagerProvider>
       </DAppKitProvider>
     </QueryClientProvider>

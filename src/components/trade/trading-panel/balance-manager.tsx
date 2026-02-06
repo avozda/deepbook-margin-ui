@@ -1,4 +1,10 @@
-import { createSignal, createEffect, Show, Suspense } from "solid-js";
+import {
+  createSignal,
+  createEffect,
+  createMemo,
+  Show,
+  Suspense,
+} from "solid-js";
 import { Transaction } from "@mysten/sui/transactions";
 import { useQueryClient } from "@tanstack/solid-query";
 import { useCurrentPool } from "@/contexts/pool";
@@ -76,6 +82,24 @@ export const BalanceManager = () => {
     if (isOpen()) {
       walletBalanceQuery.refetch();
       managerBalanceQuery.refetch();
+      setAmount(0);
+    }
+  });
+
+  createEffect(() => {
+    transferType();
+    if (isOpen()) {
+      setAmount(0);
+    }
+  });
+
+  createEffect(() => {
+    if (isOpen()) {
+      const currentAmount = amount();
+      const max = maxAmount();
+      if (currentAmount > max) {
+        setAmount(max);
+      }
     }
   });
 
@@ -145,20 +169,24 @@ export const BalanceManager = () => {
     }
   };
 
+  const maxAmount = createMemo(() => {
+    if (transferType() === "deposit") {
+      return walletBalanceQuery.data ?? 0;
+    } else {
+      return managerBalanceQuery.data?.balance ?? 0;
+    }
+  });
+
   const isValidAmount = () => {
     const amt = amount();
     if (amt <= 0) return false;
-    if (transferType() === "deposit") {
-      return (
-        walletBalanceQuery.data !== undefined &&
-        amt <= (walletBalanceQuery.data ?? 0)
-      );
-    } else {
-      return (
-        managerBalanceQuery.data !== undefined &&
-        amt <= (managerBalanceQuery.data?.balance ?? 0)
-      );
-    }
+    return amt <= maxAmount();
+  };
+
+  const handleAmountChange = (value: number | null) => {
+    const newValue = value || 0;
+    const max = maxAmount();
+    setAmount(Math.min(newValue, max));
   };
 
   return (
@@ -227,8 +255,9 @@ export const BalanceManager = () => {
                 <label class="text-sm font-medium">Amount</label>
                 <NumberField
                   rawValue={amount()}
-                  onRawValueChange={(value) => setAmount(value || 0)}
+                  onRawValueChange={handleAmountChange}
                   minValue={0}
+                  maxValue={maxAmount()}
                   formatOptions={{ maximumFractionDigits: 20 }}
                 >
                   <NumberFieldGroup>
@@ -321,8 +350,9 @@ export const BalanceManager = () => {
                 <label class="text-sm font-medium">Amount</label>
                 <NumberField
                   rawValue={amount()}
-                  onRawValueChange={(value) => setAmount(value || 0)}
+                  onRawValueChange={handleAmountChange}
                   minValue={0}
+                  maxValue={maxAmount()}
                   formatOptions={{ maximumFractionDigits: 20 }}
                 >
                   <NumberFieldGroup>

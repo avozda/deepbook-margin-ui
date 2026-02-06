@@ -52,5 +52,7 @@ export function useCandleData() {
       return fetchCandleStickData(pool().pool_id);
     },
     refetchInterval: 10000,
+    retry: 2,
+    throwOnError: false,
   }));
 }
