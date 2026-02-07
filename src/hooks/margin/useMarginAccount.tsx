@@ -41,10 +41,8 @@ export function useCreateMarginManager() {
       }
 
       setMarginManager(marginManagerId, poolKey);
-      return marginManagerId;
-    },
-    onSuccess: () => {
       toast.success("Margin manager created successfully");
+      return marginManagerId;
     },
     onError: (err: Error) => {
       toast.error(`Failed to create margin manager: ${err.message}`);
@@ -92,6 +90,7 @@ export function useMarginDeposit() {
         digest: result.Transaction.digest,
       });
 
+      toast.success("Deposit successful");
       return result;
     },
     onSuccess: async (_data, _variables, _context, mutation) => {
@@ -106,8 +105,6 @@ export function useMarginDeposit() {
         mutation.client.refetchQueries({ queryKey: ["healthFactor"] }),
         mutation.client.refetchQueries({ queryKey: ["walletBalances"] }),
       ]);
-
-      toast.success("Deposit successful");
     },
     onError: (err: Error) => {
       toast.error(`Deposit failed: ${err.message}`);
@@ -152,6 +149,7 @@ export function useMarginWithdraw() {
         digest: result.Transaction.digest,
       });
 
+      toast.success("Withdrawal successful");
       return result;
     },
     onSuccess: async (_data, _variables, _context, mutation) => {
@@ -166,8 +164,6 @@ export function useMarginWithdraw() {
         mutation.client.refetchQueries({ queryKey: ["healthFactor"] }),
         mutation.client.refetchQueries({ queryKey: ["walletBalances"] }),
       ]);
-
-      toast.success("Withdrawal successful");
     },
     onError: (err: Error) => {
       toast.error(`Withdrawal failed: ${err.message}`);

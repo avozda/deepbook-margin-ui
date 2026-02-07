@@ -31,6 +31,7 @@ export function useBorrowBase() {
         digest: result.Transaction.digest,
       });
 
+      toast.success("Borrow successful");
       return result;
     },
     onSuccess: async (_data, _variables, _context, mutation) => {
@@ -45,8 +46,6 @@ export function useBorrowBase() {
         mutation.client.refetchQueries({ queryKey: ["healthFactor"] }),
         mutation.client.refetchQueries({ queryKey: ["walletBalances"] }),
       ]);
-
-      toast.success("Borrow successful");
     },
     onError: (err: Error) => {
       toast.error(`Borrow failed: ${err.message}`);
@@ -75,6 +74,7 @@ export function useBorrowQuote() {
         digest: result.Transaction.digest,
       });
 
+      toast.success("Borrow successful");
       return result;
     },
     onSuccess: async (_data, _variables, _context, mutation) => {
@@ -89,8 +89,6 @@ export function useBorrowQuote() {
         mutation.client.refetchQueries({ queryKey: ["healthFactor"] }),
         mutation.client.refetchQueries({ queryKey: ["walletBalances"] }),
       ]);
-
-      toast.success("Borrow successful");
     },
     onError: (err: Error) => {
       toast.error(`Borrow failed: ${err.message}`);
@@ -119,6 +117,7 @@ export function useRepayBase() {
         digest: result.Transaction.digest,
       });
 
+      toast.success("Repayment successful");
       return result;
     },
     onSuccess: async (_data, _variables, _context, mutation) => {
@@ -133,8 +132,6 @@ export function useRepayBase() {
         mutation.client.refetchQueries({ queryKey: ["healthFactor"] }),
         mutation.client.refetchQueries({ queryKey: ["walletBalances"] }),
       ]);
-
-      toast.success("Repayment successful");
     },
     onError: (err: Error) => {
       toast.error(`Repayment failed: ${err.message}`);
@@ -162,7 +159,7 @@ export function useRepayQuote() {
       await suiClient().waitForTransaction({
         digest: result.Transaction.digest,
       });
-
+      toast.success("Repayment successful");
       return result;
     },
     onSuccess: async (_data, _variables, _context, mutation) => {
@@ -177,8 +174,6 @@ export function useRepayQuote() {
         mutation.client.refetchQueries({ queryKey: ["healthFactor"] }),
         mutation.client.refetchQueries({ queryKey: ["walletBalances"] }),
       ]);
-
-      toast.success("Repayment successful");
     },
     onError: (err: Error) => {
       toast.error(`Repayment failed: ${err.message}`);

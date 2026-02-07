@@ -51,6 +51,7 @@ export function usePlaceMarginLimitOrder() {
         throw new Error("Transaction failed");
       }
 
+      toast.success("Limit order placed");
       return result;
     },
     onSuccess: async () => {
@@ -58,7 +59,6 @@ export function usePlaceMarginLimitOrder() {
       queryClient.invalidateQueries({ queryKey: ["healthFactor"] });
       queryClient.invalidateQueries({ queryKey: ["marginOrders"] });
       queryClient.invalidateQueries({ queryKey: ["orderUpdates"] });
-      toast.success("Limit order placed");
 
       await new Promise((resolve) => setTimeout(resolve, 3000));
 

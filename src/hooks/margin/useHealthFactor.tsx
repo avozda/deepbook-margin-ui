@@ -1,4 +1,4 @@
-import { createQuery } from "@tanstack/solid-query";
+import { useQuery } from "@tanstack/solid-query";
 import { useCurrentNetwork } from "@/contexts/dapp-kit";
 import { useMarginManager } from "@/contexts/margin-manager";
 import { MarginIndexerClient } from "@/lib/margin-indexer-client";
@@ -28,7 +28,7 @@ export function useHealthFactor() {
   const network = useCurrentNetwork();
   const { marginManagerAddress, hasMarginManager } = useMarginManager();
 
-  return createQuery(() => ({
+  return useQuery(() => ({
     queryKey: ["healthFactor", network(), marginManagerAddress()],
     queryFn: async (): Promise<HealthFactorData> => {
       const managerId = marginManagerAddress();
@@ -82,7 +82,7 @@ export function useMarginAccountState() {
   const network = useCurrentNetwork();
   const { marginManagerAddress, hasMarginManager } = useMarginManager();
 
-  return createQuery(() => ({
+  return useQuery(() => ({
     queryKey: ["marginAccountState", network(), marginManagerAddress()],
     queryFn: async () => {
       const managerId = marginManagerAddress();
