@@ -57,6 +57,7 @@ export function useLiquidate() {
         throw new Error("Transaction failed");
       }
 
+      toast.success("Liquidation successful");
       return result;
     },
     onSuccess: (_data, _variables, _context, mutation) => {
@@ -65,7 +66,6 @@ export function useLiquidate() {
       });
       mutation.client.invalidateQueries({ queryKey: ["walletBalances"] });
       mutation.client.invalidateQueries({ queryKey: ["marginAccountState"] });
-      toast.success("Liquidation successful");
     },
     onError: (err: Error) => {
       toast.error(`Liquidation failed: ${err.message}`);

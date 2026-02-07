@@ -13,10 +13,24 @@ type TradingModeContextValue = {
   setTradingMode: (mode: TradingMode) => void;
 };
 
+const STORAGE_KEY = "deepbook:trading-mode";
+
 const TradingModeContext = createContext<TradingModeContextValue>();
 
+const loadTradingMode = (): TradingMode => {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (stored === "spot" || stored === "margin") return stored;
+  return "spot";
+};
+
 export const TradingModeProvider = (props: { children: JSX.Element }) => {
-  const [tradingMode, setTradingMode] = createSignal<TradingMode>("spot");
+  const [tradingMode, setTradingModeSignal] =
+    createSignal<TradingMode>(loadTradingMode());
+
+  const setTradingMode = (mode: TradingMode) => {
+    setTradingModeSignal(mode);
+    localStorage.setItem(STORAGE_KEY, mode);
+  };
 
   return (
     <TradingModeContext.Provider value={{ tradingMode, setTradingMode }}>
